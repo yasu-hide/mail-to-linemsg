@@ -3,6 +3,13 @@
 
 [![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy)
 
+- LINEアカウントで利用者を識別して、アカウントごとに任意のローカルパートのメールアドレスを作成できます
+- 作成したメールアドレスと、送信先のLINEトークルームを自由に組み合わせできます
+    - 他の利用者と重複がなければ、塾名 `kawai-juku@` や、 学校名 `chiyoda-chu@` などローカルパートを任意に設定できます
+    - 送信先のLINEトークルームには、1対1のほかグループを指定できます
+- 画面上のフォームからメールアドレスの作成・削除が行えます
+    - DELボタンを押すと、LINE Notifyの連携が解除されてメールアドレスが削除されます
+
 ## USAGE
 ### TL;DR
 1. LINEログインする
@@ -93,7 +100,9 @@ LINECORP_PLATFORM_NOTIFY_CLIENTID:       abcdef1234567890ABCDEF
 LINECORP_PLATFORM_NOTIFY_CLIENTSECRET:   ABCDEF01234567890abcdefABCDEF0123456789abcdef
 ```
 ### データベースを用意する
+```
 heroku pg:psql -c '\i dbtable.sql'
+```
 
 ### sendgridのInbound Email Parse Webhookを設定する
 - https://sendgrid.kke.co.jp/docs/API_Reference/Webhooks/parse.html
@@ -101,4 +110,4 @@ heroku pg:psql -c '\i dbtable.sql'
 - 手順1.MXとCNAMEのレコードが編集できるドメインで用意したドメインに設定する
 
 ### Enjoy!
-- https://{herokuのアプリ名}.herokuapp.com/ にアクセス
+- `https://{herokuのアプリ名}.herokuapp.com/` にアクセス

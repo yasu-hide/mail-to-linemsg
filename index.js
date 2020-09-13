@@ -5,6 +5,7 @@ const session = require('express-session');
 const bodyParser = require('body-parser');
 const multerUpload = require('multer')();
 const debug = require('debug')('index');
+const { Iconv } = require('iconv');
 
 const LINELogin = require('line-login');
 const LINENotify = require('./line-notify');
@@ -57,9 +58,14 @@ app
       debug('Unknown user.');
       return;
     }
-    const mailFrom = form.from;
-    const mailSubject = form.subject;
-    const mailText = form.text;
+    const mailCharsets = JSON.parse(form.charsets);
+    const iconvFrom = new Iconv(mailCharsets.from, 'UTF-8');
+    const iconvSubject = new Iconv(mailCharsets.subject, 'UTF-8');
+    const iconvText = new Iconv(mailCharsets.text, 'UTF-8');
+
+    const mailFrom = iconvFrom.convert(form.from).toString();
+    const mailSubject = iconvSubject.convert(form.subject).toString();
+    const mailText = iconvText.convert(form.text).toString();
     const notifyBody = `From: ${mailFrom}\r\nSubject: ${mailSubject}\r\n\r\n${mailText}`;
     await notify.notifyMessage(notifyToken, notifyBody)
       .catch((stCode, msg) => debug(stCode, msg));

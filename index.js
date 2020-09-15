@@ -59,9 +59,9 @@ app
       return;
     }
     const mailCharsets = JSON.parse(form.charsets);
-    const iconvFrom = new Iconv(mailCharsets.from, 'UTF-8');
-    const iconvSubject = new Iconv(mailCharsets.subject, 'UTF-8');
-    const iconvText = new Iconv(mailCharsets.text, 'UTF-8');
+    const iconvFrom = new Iconv(mailCharsets.from, 'UTF-8//TRANSLIT//IGNORE');
+    const iconvSubject = new Iconv(mailCharsets.subject, 'UTF-8//TRANSLIT//IGNORE');
+    const iconvText = new Iconv(mailCharsets.text, 'UTF-8//TRANSLIT//IGNORE');
 
     const mailFrom = iconvFrom.convert(form.from).toString();
     const mailSubject = iconvSubject.convert(form.subject).toString();

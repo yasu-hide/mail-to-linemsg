@@ -9,7 +9,13 @@ class Database {
         throw new Error(`Required parameter ${param} is missing.`);
       }
     });
-    this.database = pgPromise(options.databaseURL);
+    this.database = pgPromise({
+        connectionString: options.databaseURL,
+        ssl: {
+            sslmode: 'require',
+            rejectUnauthorized: false
+        }
+    });
   }
 
   async createUser(lineUserId) {

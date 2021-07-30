@@ -10,11 +10,8 @@ class Database {
       }
     });
     this.database = pgPromise({
-        connectionString: options.databaseURL,
-        ssl: {
-            sslmode: 'require',
-            rejectUnauthorized: false
-        }
+      connectionString: options.databaseURL,
+      ssl: { sslmode: 'require', rejectUnauthorized: false }
     });
   }
 

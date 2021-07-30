@@ -9,6 +9,7 @@ const { Iconv } = require('iconv');
 
 const LINELogin = require('line-login');
 const LINENotify = require('./line-notify');
+const MQTTPublish = require('./mqtt-publish');
 const Database = require('./db');
 
 // eslint-disable-next-line no-useless-escape
@@ -34,6 +35,7 @@ const notify = new LINENotify({
 const db = new Database({
   databaseURL: process.env.DATABASE_URL,
 });
+const mqttPublish = new MQTTPublish();
 const isLoggedIn = (userId) => (userId !== undefined);
 
 const app = express();
@@ -69,6 +71,8 @@ app
     const notifyBody = `From: ${mailFrom}\r\nSubject: ${mailSubject}\r\n\r\n${mailText}`;
     await notify.notifyMessage(notifyToken, notifyBody)
       .catch((stCode, msg) => debug(stCode, msg));
+    mqttPublish.publish(mailSubject)
+      .catch((msg) => debug(msg));
   })
   .use(express.static(`${__dirname}/public`))
   .use(bodyParser.urlencoded({

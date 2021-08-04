@@ -32,7 +32,7 @@ class Mqtt {
     this.client = null;
   }
 
-  async publish(message = 'ライン') {
+  async publish(message = 'message') {
     if (!this.uri) {
       throw new Error('MQTT_URI is not defined.');
     }

@@ -6,6 +6,7 @@ const bodyParser = require('body-parser');
 const multerUpload = require('multer')();
 const debug = require('debug')('index');
 const { Iconv } = require('iconv');
+const helmet = require('helmet');
 
 const LINELogin = require('line-login');
 const LINENotify = require('./line-notify');
@@ -46,6 +47,7 @@ if (app.get('env') === 'production') {
 
 app
   .use(session(sessionOptions))
+  .use(helmet())
   .post('/webhook', multerUpload.none(), async (req, res) => {
     res.sendStatus(200);
     const form = req.body;

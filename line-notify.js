@@ -30,8 +30,8 @@ class LineNotify {
 
       const query = querystring.stringify({
         response_type: 'code',
-        client_id: process.env.LINECORP_PLATFORM_NOTIFY_CLIENTID,
-        redirect_uri: process.env.LINECORP_PLATFORM_NOTIFY_CALLBACKURL,
+        client_id: this.client_id,
+        redirect_uri: this.callback_url,
         state: stateParam,
         nonce: nonceParam,
         scope: encodeURIComponent(this.scope),

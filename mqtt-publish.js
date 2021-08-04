@@ -2,12 +2,19 @@ const debug = require('debug')('mqtt-publish:module');
 const mqtt = require('async-mqtt');
 
 class Mqtt {
-  constructor() {
-    this.uri = String(process.env.MQTT_URI);
-    this.username = String(process.env.MQTT_USERNAME);
-    this.password = String(process.env.MQTT_PASSWORD || '');
-    this.topic = String(process.env.MQTT_TOPIC);
-    this.client = undefined;
+  constructor(options) {
+    const requiredParams = ['uri', 'username', 'password', 'topic'];
+    requiredParams.forEach((param) => {
+      if (options[param] == null) {
+        // null or undefined
+        throw new Error(`Required parameter ${param} is missing.`);
+      }
+    });
+    this.uri = String(options.uri);
+    this.username = String(options.username);
+    this.password = String(options.password);
+    this.topic = String(options.topic);
+    this.client = null;
   }
 
   connect() {

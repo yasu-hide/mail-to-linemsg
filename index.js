@@ -36,7 +36,12 @@ const notify = new LINENotify({
 const db = new Database({
   databaseURL: process.env.DATABASE_URL,
 });
-const mqttPublish = new MQTTPublish();
+const mqttPublish = new MQTTPublish({
+  uri: String(process.env.MQTT_URI),
+  username: String(process.env.MQTT_USER),
+  password: String(process.env.MQTT_PASS),
+  topic: String(process.env.MQTT_TOPIC),
+});
 const isLoggedIn = (userId) => (userId !== undefined);
 
 const app = express();

@@ -87,23 +87,24 @@ app
     debug('index:user_id', userId);
     if (!isLoggedIn(userId)) {
       res.redirect(`${req.baseUrl}/login`);
-    } else {
-      db.getAddr(userId)
-        .then((pageParam) => {
-          res.render(`${__dirname}/pages/index`, { param: pageParam });
-        })
-        .catch((msg) => res.status(500).send(msg));
+      return;
     }
+    db.getAddr(userId)
+      .then((pageParam) => {
+        res.render(`${__dirname}/pages/index`, { param: pageParam });
+      })
+      .catch((msg) => res.status(500).send(msg));
   })
   .get('/login', (req, res) => {
-    if (isLoggedIn(req.session.userId)) {
+    if (isLoggedIn(req.session.user_id)) {
       res.redirect(`${req.baseUrl}/`);
+      return;
     }
     res.render(`${__dirname}/pages/login`);
   })
   .get('/logout', (req, res) => {
     req.session.destroy();
-    res.redirect(`${req.baseUrl}/login?reason=logged_out`);
+    return res.redirect(`${req.baseUrl}/login?reason=logged_out`);
   })
   .get('/auth', login.auth())
   .get('/callback', login.callback(

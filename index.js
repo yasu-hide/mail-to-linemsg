@@ -42,7 +42,7 @@ const mqttPublish = new MQTTPublish({
   password: String(process.env.MQTT_PASS),
   topic: String(process.env.MQTT_TOPIC),
 });
-const isLoggedIn = (userId) => (userId !== undefined);
+const isLoggedIn = (userId) => (userId != null);
 
 const app = express();
 if (app.get('env') === 'production') {

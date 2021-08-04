@@ -29,7 +29,7 @@ class Mqtt {
       debug(`Disconnect from ${this.uri}`);
       await this.client.end();
     }
-    this.client = undefined;
+    this.client = null;
   }
 
   async publish(message = 'ライン') {

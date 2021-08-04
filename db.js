@@ -11,7 +11,7 @@ class Database {
     });
     this.database = pgPromise({
       connectionString: options.databaseURL,
-      ssl: { sslmode: 'require', rejectUnauthorized: false }
+      ssl: { sslmode: 'require', rejectUnauthorized: false },
     });
   }
 
@@ -38,7 +38,7 @@ class Database {
     if (res.length > 1) {
       throw new Error(`SystemError: Duplicate user ${lineUserId}`);
     }
-    return undefined;
+    return null;
   }
 
   async setUser(lineUserId) {
@@ -64,7 +64,7 @@ class Database {
     if (res.length === 1) {
       return res[0].notify_token;
     }
-    return undefined;
+    return null;
   }
 
   async getEnabledNotifyTokenByAddr(addr) {
@@ -75,7 +75,7 @@ class Database {
     if (res.length === 1) {
       return res[0].notify_token;
     }
-    return undefined;
+    return null;
   }
 
   async setAddr(email, userId, notifyToken, status) {

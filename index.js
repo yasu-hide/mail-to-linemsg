@@ -36,12 +36,20 @@ const notify = new LINENotify({
 const db = new Database({
   databaseURL: process.env.DATABASE_URL,
 });
-const mqttPublish = new MQTTPublish({
-  uri: String(process.env.MQTT_URI),
-  username: String(process.env.MQTT_USER),
-  password: String(process.env.MQTT_PASS),
-  topic: String(process.env.MQTT_TOPIC),
-});
+const mqttPublish = (() => {
+  try {
+    return new MQTTPublish({
+      uri: process.env.MQTT_URI,
+      username: process.env.MQTT_USER,
+      password: process.env.MQTT_PASS || '',
+      topic: process.env.MQTT_TOPIC,
+    });
+  } catch (e) {
+    debug('Failed to load MQTT module.');
+    return null;
+  }
+})();
+
 const isLoggedIn = (userId) => (userId != null);
 
 const app = express();
@@ -78,8 +86,10 @@ app
     const notifyBody = `From: ${mailFrom}\r\nSubject: ${mailSubject}\r\n\r\n${mailText}`;
     await notify.notifyMessage(notifyToken, notifyBody)
       .catch((stCode, msg) => debug(stCode, msg));
-    mqttPublish.publish(mailSubject)
-      .catch((msg) => debug(msg));
+    if (mqttPublish !== null) {
+      mqttPublish.publish(mailSubject)
+        .catch((msg) => debug(msg));
+    }
   })
   .use(express.static(`${__dirname}/public`))
   .use(bodyParser.urlencoded({

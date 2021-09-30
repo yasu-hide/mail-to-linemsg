@@ -64,6 +64,7 @@ app
   .post('/webhook', multerUpload.none(), async (req, res) => {
     res.sendStatus(200);
     const form = req.body;
+    console.log(form);
     const mailTo = form.to.match(emailRegexp);
     if (!mailTo) {
       debug('Invalid To address.');

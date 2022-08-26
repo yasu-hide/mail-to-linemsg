@@ -1267,10 +1267,10 @@ iconv-lite@0.4.24:
   dependencies:
     safer-buffer ">= 2.1.2 < 3"
 
-iconv@^3.0.0:
-  version "3.0.0"
-  resolved "https://registry.yarnpkg.com/iconv/-/iconv-3.0.0.tgz#9a293ec123b16b4717e450714ddbb07f985b7d9c"
-  integrity sha512-bKTEP55J/e+UutBE3BDBWq6KukPWh3GBYCZGbLEY9vxRDUU2F3bqvPsp/a/DEdIamgF2MvW5lF0Rj1U/7KRL+g==
+iconv@^3.0.1:
+  version "3.0.1"
+  resolved "https://registry.yarnpkg.com/iconv/-/iconv-3.0.1.tgz#31d319d71b59415cf348362c382961b1eb6f0e81"
+  integrity sha512-lJnFLxVc0d82R7GfU7a9RujKVUQ3Eee19tPKWZWBJtAEGRHVEyFzCtbNl3GPKuDnHBBRT4/nDS4Ru9AIDT72qA==
 
 ieee754@^1.1.13:
   version "1.2.1"

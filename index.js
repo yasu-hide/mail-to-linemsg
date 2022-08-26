@@ -11,7 +11,7 @@ const helmet = require('helmet');
 const LINELogin = require('line-login');
 const LINENotify = require('./line-notify');
 const MQTTPublish = require('./mqtt-publish');
-const Database = require('./db');
+const Database = require('./db-pgsql');
 
 // eslint-disable-next-line no-useless-escape
 const emailRegexp = /^[A-Za-z0-9][A-Za-z0-9\-_.\+]+/;

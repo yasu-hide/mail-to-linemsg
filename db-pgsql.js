@@ -1,4 +1,4 @@
-const debug = require('debug')('db');
+const debug = require('debug')('db-pgsql');
 const pgPromise = require('pg-promise')({ noWarnings: true });
 
 class Database {

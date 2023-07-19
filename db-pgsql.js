@@ -11,7 +11,6 @@ class Database {
     });
     this.database = pgPromise({
       connectionString: options.databaseURL,
-      ssl: { sslmode: 'require', rejectUnauthorized: false },
     });
   }
 
@@ -29,7 +28,7 @@ class Database {
 
   async getUser(lineUserId) {
     debug('db:getUser');
-    const res = await this.database.any('SELECT * FROM USER_MASTER WHERE LINE_USER_ID = $1', [lineUserId])
+    const res = await this.database.any('SELECT * FROM user_master WHERE line_user_id = $1', [lineUserId])
       .catch((msg) => Promise.reject(msg));
     debug('db:getUser:select', res);
     if (res.length === 1) {
@@ -43,14 +42,14 @@ class Database {
 
   async setUser(lineUserId) {
     debug('db:setUser');
-    await this.database.none('INSERT INTO USER_MASTER(USER_ID,LINE_USER_ID) VALUES (NEXTVAL(\'SEQ_USER_MASTER\'), $1)', [lineUserId])
+    await this.database.none('INSERT INTO user_master(user_id,line_user_id) VALUES (NEXTVAL(\'seq_user_master\'), $1)', [lineUserId])
       .then(() => debug('db:setUser:inserted'))
       .catch((msg) => Promise.reject(msg));
   }
 
   async getAddr(userId) {
     debug('db:getAddr');
-    const res = await this.database.any('SELECT * FROM ADDR_MASTER WHERE USER_ID = $1', userId)
+    const res = await this.database.any('SELECT * FROM addr_master WHERE user_id = $1', userId)
       .catch((msg) => Promise.reject(msg));
     debug('db:getAddr:select', res);
     return res;
@@ -58,7 +57,7 @@ class Database {
 
   async getNotifyToken(addrId) {
     debug('db:getNotifyToken');
-    const res = await this.database.any('SELECT NOTIFY_TOKEN FROM ADDR_MASTER WHERE ADDR_ID = $1', [addrId])
+    const res = await this.database.any('SELECT notify_token FROM addr_master WHERE addr_id = $1', [addrId])
       .catch((msg) => Promise.reject(msg));
     debug('db:getNotifyToken:select', res);
     if (res.length === 1) {
@@ -69,7 +68,7 @@ class Database {
 
   async getEnabledNotifyTokenByAddr(addr) {
     debug('db:getEnabledNotifyTokenByAddr');
-    const res = await this.database.any('SELECT NOTIFY_TOKEN FROM ADDR_MASTER WHERE ADDR_MAIL = $1 AND STATUS = 1', [addr])
+    const res = await this.database.any('SELECT notify_token FROM addr_master WHERE addr_mail = $1 AND status = 1', [addr])
       .catch((msg) => Promise.reject(msg));
     debug('db:getEnabledNotifyTokenByAddr:select', res);
     if (res.length === 1) {
@@ -80,35 +79,35 @@ class Database {
 
   async setAddr(email, userId, notifyToken, status) {
     debug('db:setAddr');
-    await this.database.none('INSERT INTO ADDR_MASTER(ADDR_ID,ADDR_MAIL,USER_ID,NOTIFY_TOKEN, STATUS) VALUES (NEXTVAL(\'SEQ_ADDR_MASTER\'), $1, $2, $3, $4)', [email, userId, notifyToken, status])
+    await this.database.none('INSERT INTO addr_master(addr_id,addr_mail,user_id,notify_token,status) VALUES (NEXTVAL(\'seq_addr_master\'), $1, $2, $3, $4)', [email, userId, notifyToken, status])
       .then(() => debug('db:setAddr:inserted'))
       .catch((msg) => Promise.reject(msg));
   }
 
   async unsetAddr(addrId) {
     debug('db:unsetAddr');
-    await this.database.none('DELETE FROM ADDR_MASTER WHERE ADDR_ID = $1', [addrId])
+    await this.database.none('DELETE FROM addr_master WHERE addr_id = $1', [addrId])
       .then(() => debug('db:unsetAddr:deleted'))
       .catch((msg) => Promise.reject(msg));
   }
 
   async enableAddr(addrId) {
     debug('db:enableAddr');
-    await this.database.none('UPDATE ADDR_MASTER SET STATUS=1 WHERE STATUS<>1 AND ADDR_ID = $1', [addrId])
+    await this.database.none('UPDATE addr_master SET status=1 WHERE status<>1 AND addr_id = $1', [addrId])
       .then(() => debug('db:enableAddr:updated'))
       .catch((msg) => Promise.reject(msg));
   }
 
   async disableAddr(addrId) {
     debug('db:disableAddr');
-    await this.database.none('UPDATE ADDR_MASTER SET STATUS=0 WHERE STATUS<>0 AND ADDR_ID = $1', [addrId])
+    await this.database.none('UPDATE addr_master SET status=0 WHERE status<>0 AND addr_id = $1', [addrId])
       .then(() => debug('db:disableAddr:updated'))
       .catch((msg) => Promise.reject(msg));
   }
 
   async isDupAddr(addr) {
     debug('db:isDupAddr');
-    const res = await this.database.any('SELECT COUNT(*) FROM ADDR_MASTER WHERE ADDR_MAIL = $1', [addr])
+    const res = await this.database.any('SELECT COUNT(*) FROM addr_master WHERE addr_mail = $1', [addr])
       .catch((msg) => Promise.reject(msg));
     debug('db:isDupAddr:select', res);
     return parseInt(res[0].count, 10) > 0;

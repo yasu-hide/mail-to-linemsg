@@ -7,14 +7,12 @@ const multerUpload = require('multer')();
 const debug = require('debug')('index');
 const { Iconv } = require('iconv');
 const helmet = require('helmet');
+const emailAddresses = require('email-addresses');
 
 const LINELogin = require('line-login');
 const LINENotify = require('./line-notify');
 const MQTTPublish = require('./mqtt-publish');
 const Database = require('./db-pgsql');
-
-// eslint-disable-next-line no-useless-escape
-const emailRegexp = /^[A-Za-z0-9][A-Za-z0-9\-_.\+]+/;
 
 const sessionOptions = {
   secret: process.env.LINECORP_PLATFORM_CHANNEL_CHANNELSECRET,
@@ -64,12 +62,12 @@ app
   .post('/webhook', multerUpload.none(), async (req, res) => {
     res.sendStatus(200);
     const form = req.body;
-    const mailTo = form.to.match(emailRegexp);
-    if (!mailTo) {
+    const mailTo = emailAddresses.parseAddressList(form.to.replace(/, *$/,''));
+    if (!mailTo || mailTo.length <= 0) {
       debug('Invalid To address.');
       return;
     }
-    const notifyToken = await db.getEnabledNotifyTokenByAddr(`${mailTo}`)
+    const notifyToken = await db.getEnabledNotifyTokenByAddr(`${mailTo[0].local}`)
       .catch((msg) => debug(msg));
     if (!notifyToken) {
       debug('Unknown user.');
@@ -142,17 +140,15 @@ app
       req.session.destroy();
       return res.redirect(`${req.baseUrl}/login?reason=not_logged_in`);
     }
-    const email = req.body.formInputEmail;
-    if (!email || email.length < 4) {
-      return res.redirect(`${req.baseUrl}/?reason=addr_too_short`);
-    }
-    if (emailRegexp.test(email) === false) {
+    const email = emailAddresses.parseOneAddress(req.body.formInputEmail).local;
+    if (!email) {
       return res.redirect(`${req.baseUrl}/?reason=invalid_addr`);
     }
-    req.session.email = email.toLowerCase();
-    if (email.indexOf('@') > 0) {
-      req.session.email = email.substr(0, email.indexOf('@'));
+    if(email.length < 4) {
+      return res.redirect(`${req.baseUrl}/?reason=addr_too_short`);
     }
+
+    req.session.email = email.toLowerCase();
     if (await db.isDupAddr(req.session.email)) {
       return res.redirect(`${req.baseUrl}/?reason=duplicate_addr`);
     }

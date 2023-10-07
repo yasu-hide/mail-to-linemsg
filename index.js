@@ -140,12 +140,20 @@ app
       req.session.destroy();
       return res.redirect(`${req.baseUrl}/login?reason=not_logged_in`);
     }
-    const email = emailAddresses.parseOneAddress(req.body.formInputEmail).local;
+    const inputEmail = req.body.formInputEmail;
+    if (!inputEmail) {
+      return res.redirect(`${req.baseUrl}/?reason=invalid_addr`);
+    }
+    let email = inputEmail;
+    if (inputEmail.indexOf('@') === -1) {
+      email = `${inputEmail}@local`
+    }
+    email = emailAddresses.parseOneAddress(email).local;
     if (!email) {
       return res.redirect(`${req.baseUrl}/?reason=invalid_addr`);
     }
     if(email.length < 4) {
-      return res.redirect(`${req.baseUrl}/?reason=addr_too_short`);
+      return res.redirect(`${req.baseUrl}/?reason=too_short_addr`);
     }
 
     req.session.email = email.toLowerCase();

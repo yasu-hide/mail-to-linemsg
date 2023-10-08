@@ -17,6 +17,7 @@
     "express": "^4.18.1",
     "express-session": "^1.17.2",
     "helmet": "^4.6.0",
+    "html-to-text": "^9.0.5",
     "iconv": "^3.0.1",
     "line-login": "^1.0.14",
     "mqtt": "^4.3.7",

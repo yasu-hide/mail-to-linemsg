@@ -74,18 +74,29 @@ app
       return;
     }
     const mailCharsets = JSON.parse(form.charsets);
-    const iconvFrom = new Iconv(mailCharsets.from, 'UTF-8//TRANSLIT//IGNORE');
-    const iconvSubject = new Iconv(mailCharsets.subject, 'UTF-8//TRANSLIT//IGNORE');
-    const iconvText = new Iconv(mailCharsets.text, 'UTF-8//TRANSLIT//IGNORE');
+    const convertUtf8 = (convertString, convertCharset) => {
+      const cnv = new Iconv(convertCharset, 'UTF-8//TRANSLIT//IGNORE');
+      return cnv.convert(convertString).toString();
+    }
 
-    const mailFrom = iconvFrom.convert(form.from).toString();
-    const mailSubject = iconvSubject.convert(form.subject).toString();
-    const mailText = iconvText.convert(form.text).toString();
-    const notifyBody = `From: ${mailFrom}\r\nSubject: ${mailSubject}\r\n\r\n${mailText}`;
+    const mailContent = {
+      'from': convertUtf8(form.from, mailCharsets.from),
+      'subject': convertUtf8(form.subject, mailCharsets.subject),
+      'body': ''
+    };
+    if(mailCharsets.text && form.text) {
+      mailContent.body = convertUtf8(form.text, mailCharsets.text);
+    }
+    else if(mailCharsets.html && form.html) {
+      const htmlToText = require('html-to-text');
+      mailContent.body = convertUtf8(htmlToText.convert(form.html), mailCharsets.html);
+    }
+
+    const notifyBody = `From: ${mailContent.from}\r\nSubject: ${mailContent.subject}\r\n\r\n${mailContent.body}`;
     await notify.notifyMessage(notifyToken, notifyBody)
       .catch((stCode, msg) => debug(stCode, msg));
     if (mqttPublish !== null) {
-      mqttPublish.publish(mailSubject)
+      mqttPublish.publish(mailContent.subject)
         .catch((msg) => debug(msg));
     }
   })

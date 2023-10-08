@@ -159,15 +159,15 @@ app
     if (inputEmail.indexOf('@') === -1) {
       email = `${inputEmail}@local`
     }
-    email = emailAddresses.parseOneAddress(email).local;
+    email = emailAddresses.parseOneAddress(email);
     if (!email) {
       return res.redirect(`${req.baseUrl}/?reason=invalid_addr`);
     }
-    if(email.length < 4) {
+    if(email.local.length < 4) {
       return res.redirect(`${req.baseUrl}/?reason=too_short_addr`);
     }
 
-    req.session.email = email.toLowerCase();
+    req.session.email = email.local.toLowerCase();
     if (await db.isDupAddr(req.session.email)) {
       return res.redirect(`${req.baseUrl}/?reason=duplicate_addr`);
     }

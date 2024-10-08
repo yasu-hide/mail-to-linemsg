@@ -1,4 +1,4 @@
-# mail-to-linemsg
+# mail-to-linenotify
 メールをLINEメッセージに送信
 
 [![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy)

@@ -1,8 +1,8 @@
 {
-  "name": "mail-to-linemsg",
+  "name": "mail-to-linenotify",
   "version": "0.0.1",
   "main": "index.js",
-  "description": "Notify for mail to LINE msg",
+  "description": "Notify for mail to LINE notify",
   "scripts": {
     "start": "node index.js"
   },

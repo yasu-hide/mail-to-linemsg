@@ -1,12 +1,21 @@
 {
-  "name": "mail-to-linenotify",
+  "name": "mail-to-linemsg",
   "version": "0.0.1",
   "main": "index.js",
-  "description": "Notify for mail to LINE notify",
+  "description": "Notify for mail to LINE Messaging API",
+  "nodemonConfig": {
+    "ignore": [
+      "main.js"
+    ],
+    "watch": [
+      "index.js"
+    ]
+  },
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
+    "@line/bot-sdk": "^9.4.1",
     "async-mqtt": "^2.6.1",
     "body-parser": "^1.20.3",
     "crypto": "^1.0.1",
@@ -19,7 +28,7 @@
     "helmet": "^4.6.0",
     "html-to-text": "^9.0.5",
     "iconv": "^3.0.1",
-    "line-login": "^1.0.14",
+    "line-login": "^1.0.3",
     "mqtt": "^5.7.2",
     "multer": "^1.4.4",
     "pg-promise": "^11.5.5",
@@ -28,7 +37,7 @@
     "secure-compare": "^3.0.1"
   },
   "devDependencies": {
-    "eslint": "^7.2.0",
+    "eslint": "^7.32.0",
     "eslint-config-airbnb": "^18.2.0",
     "eslint-plugin-import": "^2.22.0",
     "eslint-plugin-jsx-a11y": "^6.3.1",

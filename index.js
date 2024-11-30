@@ -98,8 +98,10 @@ app
       res.sendStatus(200);
       const event = req.body.events[0];
       if(event && event.type === 'join' && event.source.type === 'group') {
+        debug('msg-webhook:called');
         const lineGroupId = event.source.groupId;
         const lineGroupSummary = await msgbot.getGroupSummary(lineGroupId);
+        debug(`msg-webhook:lineGroupId: ${lineGroupId}`);
         await db.addRecipient(lineGroupId, 1, lineGroupSummary.groupName.substring(0, 63));
       }
     } catch (e) {
@@ -142,6 +144,12 @@ app
       await msgbot.pushMessage({
         to: recipient.line_recipient_id,
         messages: [ { type: 'text', text: msgBody }, ],
+      }).catch((err) => {
+        if(err instanceof HTTPFetchError) {
+          console.error(err.status);
+          console.error(err.headers.get('x-line-request-id'));
+          console.error(err.body);
+        }
       });
       if (mqttPublish !== null) {
         mqttPublish.publish(mailContent.subject)

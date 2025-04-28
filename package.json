@@ -24,7 +24,7 @@
     "ejs": "^3.1.10",
     "email-addresses": "^5.0.0",
     "express": "^4.21.2",
-    "express-session": "^1.18.0",
+    "express-session": "^1.18.1",
     "helmet": "^4.6.0",
     "html-to-text": "^9.0.5",
     "iconv": "^3.0.1",

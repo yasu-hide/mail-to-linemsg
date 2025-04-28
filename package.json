@@ -19,7 +19,7 @@
     "async-mqtt": "^2.6.1",
     "body-parser": "^1.20.3",
     "crypto": "^1.0.1",
-    "debug": "^4.3.7",
+    "debug": "^4.4.0",
     "dotenv": "^8.6.0",
     "ejs": "^3.1.10",
     "email-addresses": "^5.0.0",

@@ -3,7 +3,8 @@
     <head>
         <meta http-equiv='Content-type' content='text/html; charset=utf-8' />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css" />
+        <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css" />
+        <script src="/main.js" defer="defer"></script>
         <title>メール通知登録</title>
         <style>
             form input:focus:invalid {
@@ -17,37 +18,13 @@
     <body>
         <nav class="navbar navbar-default navbar-static-top">
             <div class="container-fluid">
-                <a href="#" class="navbar-brand">mail-to-linenotify</a>
+                <a href="#" class="navbar-brand">mail-to-linemsg</a>
                 <ul class="nav navbar-right">
                     <li><a href="/logout">logout</a></li>
                 </ul>
             </div>
         </nav>
-        <div class="container">
-            <div class="row">
-                <% param.forEach((addr) => { %>
-                <div class="col-md-4 col-md-offset-4" style="margin-top: 5px; margin-bottom: 1px;">
-                    <form method="post" action="/unregister-addr" class="form-inline">
-                        <div class="form-group">
-                            <input type="hidden" name="formIndexEmail" id="formIndexEmail<%= addr.addr_id %>" value="<%= addr.addr_id %>" />
-                            <input type="text" name="formInputEmail" class="form-control" id="formInputEmail<%= addr.addr_id %>" value="<%= addr.addr_mail %>" maxlength="30" readonly />
-                            <button type="submit" class="btn btn-danger mx-md-1 my-md-1">Del</button>
-                        </div>
-                    </form>
-                </div>
-                <% }); %>
-            </div>
-            <div class="row">
-                <div class="col-md-4 col-md-offset-4" style="margin-top: 5px; margin-bottom: 1px;">
-                    <form method="post" action="/register-addr" class="form-inline">
-                        <div class="form-group">
-                            <label for="formInputEmail" class="sr-only">Email</label>
-                            <input type="text" name="formInputEmail" class="form-control" id="formInputEmail" pattern="^[A-Za-z0-9][A-Za-z0-9-_.\+]*" placeholder="Enter email" maxlength="30" autofocus required />
-                            <button type="submit" class="btn btn-primary mx-md-1 my-md-1">Add</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
+        <div id="container-root" class="container"></div>
+        <div id="container-new" class="container"></div>
     </body>
 </html>

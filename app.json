@@ -1,7 +1,7 @@
 {
     "name": "mail-to-linenotify",
-    "description": "Notify for mail to LINE notify",
-    "repository": "https://github.com/yasu-hide/mail-to-linenotify",
+    "description": "Notify for mail to LINE Messaging API",
+    "repository": "https://github.com/yasu-hide/mail-to-linemsg",
     "image": "heroku/nodejs",
     "addons": [ "heroku-postgresql:hobby-dev" ],
     "buildpacks": [ { "url": "heroku/nodejs" } ],

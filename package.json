@@ -30,7 +30,7 @@
     "iconv": "^3.0.1",
     "line-login": "^1.0.3",
     "mqtt": "^5.13.0",
-    "multer": "^2.0.0",
+    "multer": "^2.0.1",
     "pg-promise": "^11.13.0",
     "querystring": "^0.2.1",
     "request": "^2.88.0",

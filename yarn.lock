@@ -2313,10 +2313,10 @@ mqtt@^4.3.7:
     ws "^7.5.5"
     xtend "^4.0.2"
 
-mqtt@^5.10.4:
-  version "5.11.1"
-  resolved "https://registry.yarnpkg.com/mqtt/-/mqtt-5.11.1.tgz#9b130e83e75f94ae19f87995522f37c2cb0e8916"
-  integrity sha512-GHDhnWW/npS6KTnmfcbmfIC9GNkNt7bx7AL6M4TUAIPbBNA454LTYXyp09P0OcaDuSrWS9U0XXicuRgBslbdhA==
+mqtt@^5.13.0:
+  version "5.13.0"
+  resolved "https://registry.yarnpkg.com/mqtt/-/mqtt-5.13.0.tgz#a7cb555890ad75740870bd8ebd921d795f81b620"
+  integrity sha512-pR+z+ChxFl3n8AKLQbTONVOOg/jl4KiKQRBAi78tjd6PksOWvl1nl9L8ZHOZ3MiavZfrUOjok2ddwc1VymGWRg==
   dependencies:
     commist "^3.2.0"
     concat-stream "^2.0.0"

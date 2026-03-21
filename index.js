@@ -3,11 +3,12 @@ require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
 const bodyParser = require('body-parser');
-const multerUpload = require('multer')();
 const debug = require('debug')('index');
+const Dicer = require('dicer');
 const { Iconv } = require('iconv');
 const helmet = require('helmet');
 const emailAddresses = require('email-addresses');
+const htmlToText = require('html-to-text');
 
 const LINELogin = require('line-login');
 const LINEMsgSdk = require ('@line/bot-sdk');
@@ -59,6 +60,141 @@ const helmetOption = {
   }
 };
 
+const mailWebhookMaxBytes = 30 * 1024 * 1024;
+const lineTextMessageMaxChars = 5000;
+const lineTextMessageTruncationMarker = '\r\n（省略）';
+const trackedMultipartFieldNames = new Set(['to', 'from', 'subject', 'charsets', 'text', 'html']);
+const utf8MultipartFieldNames = new Set(['to', 'from', 'subject', 'charsets']);
+const isUtf8Charset = (charset) => !charset || /^(utf-?8|us-ascii|ascii)$/i.test(charset);
+const getMultipartBoundary = (contentType) => {
+  const matched = contentType.match(/boundary=(?:"([^"]+)"|([^;]+))/i);
+  if (!matched) {
+    throw new Error('Multipart boundary is missing.');
+  }
+
+  return matched[1] || matched[2];
+};
+const getMultipartFieldName = (contentDisposition) => {
+  if (!contentDisposition) {
+    return null;
+  }
+
+  const matched = contentDisposition.match(/name="([^"]+)"/i);
+  return matched ? matched[1] : null;
+};
+const getFirstHeaderValue = (headerValue) => {
+  if (!Array.isArray(headerValue) || headerValue.length <= 0) {
+    return null;
+  }
+
+  return headerValue[0];
+};
+const isMultipartFilePart = (contentDisposition) => /filename=/i.test(contentDisposition || '');
+const streamMultipartForm = (req, maxBytes) => new Promise((resolve, reject) => {
+  const boundary = getMultipartBoundary(req.headers['content-type'] || '');
+  const parser = new Dicer({ boundary });
+  const formParts = {};
+  let totalBytes = 0;
+  let isSettled = false;
+
+  const cleanup = () => {
+    req.removeListener('data', handleRequestData);
+    req.removeListener('aborted', handleRequestAborted);
+    req.removeListener('error', handleError);
+    parser.removeListener('error', handleError);
+    parser.removeListener('finish', handleFinish);
+    parser.removeListener('part', handlePart);
+  };
+  const settleError = (error) => {
+    if (isSettled) {
+      return;
+    }
+
+    isSettled = true;
+    cleanup();
+    req.unpipe(parser);
+    req.resume();
+    reject(error);
+  };
+  const handleError = (error) => settleError(error);
+  const handleRequestData = (chunk) => {
+    totalBytes += chunk.length;
+    if (totalBytes > maxBytes) {
+      settleError(new Error('Mail webhook payload is too large.'));
+    }
+  };
+  const handleRequestAborted = () => settleError(new Error('Mail webhook request was aborted.'));
+  const handlePart = (part) => {
+    let fieldName = null;
+    let shouldCollect = false;
+    let partHeaders = {};
+    const chunks = [];
+
+    part.on('header', (headers) => {
+      partHeaders = headers;
+      const contentDisposition = getFirstHeaderValue(headers['content-disposition']);
+      fieldName = getMultipartFieldName(contentDisposition);
+      shouldCollect = Boolean(fieldName)
+        && trackedMultipartFieldNames.has(fieldName)
+        && !isMultipartFilePart(contentDisposition);
+
+      if (!shouldCollect) {
+        part.resume();
+      }
+    });
+    part.on('data', (chunk) => {
+      if (shouldCollect) {
+        chunks.push(chunk);
+      }
+    });
+    part.on('error', handleError);
+    part.on('end', () => {
+      if (shouldCollect && fieldName) {
+        formParts[fieldName] = {
+          headers: partHeaders,
+          data: Buffer.concat(chunks),
+        };
+      }
+    });
+  };
+  const handleFinish = () => {
+    if (isSettled) {
+      return;
+    }
+
+    isSettled = true;
+    cleanup();
+    resolve(formParts);
+  };
+
+  req.on('data', handleRequestData);
+  req.on('aborted', handleRequestAborted);
+  req.on('error', handleError);
+  parser.on('error', handleError);
+  parser.on('finish', handleFinish);
+  parser.on('part', handlePart);
+  req.pipe(parser);
+});
+const decodeUtf8Buffer = (valueBuffer) => valueBuffer.toString('utf8');
+const convertUtf8 = (valueBuffer, charset) => {
+  if (isUtf8Charset(charset)) {
+    return decodeUtf8Buffer(valueBuffer);
+  }
+
+  const cnv = new Iconv(charset, 'UTF-8//TRANSLIT//IGNORE');
+  return cnv.convert(valueBuffer).toString('utf8');
+};
+const truncateLineTextMessage = (message) => {
+  const messageChars = Array.from(message);
+  if (messageChars.length <= lineTextMessageMaxChars) {
+    return message;
+  }
+
+  const markerChars = Array.from(lineTextMessageTruncationMarker);
+  const truncatedLength = Math.max(lineTextMessageMaxChars - markerChars.length, 0);
+  return `${messageChars.slice(0, truncatedLength).join('')}${lineTextMessageTruncationMarker}`;
+};
+
 const app = express();
 if (app.get('env') === 'production') {
   app.set('trust proxy', 1);
@@ -108,11 +244,16 @@ app
       next(e);
     }
   })
-  .post('/mail-webhook', multerUpload.none(), async (req, res, next) => {
+  .post('/mail-webhook', async (req, res, next) => {
     try {
       res.sendStatus(200);
-      const form = req.body;
-      const mailTo = emailAddresses.parseAddressList(form.to.replace(/, *$/,''));
+      const formParts = await streamMultipartForm(req, mailWebhookMaxBytes);
+      const form = Object.keys(formParts).reduce((acc, key) => ({
+        ...acc,
+        ...(utf8MultipartFieldNames.has(key) ? { [key]: decodeUtf8Buffer(formParts[key].data) } : {}),
+      }), {});
+      const mailCharsets = JSON.parse(form.charsets || '{}');
+      const mailTo = emailAddresses.parseAddressList((form.to || '').replace(/, *$/,''));
       if (!mailTo || mailTo.length <= 0) {
         debug('Invalid To address.');
         return;
@@ -122,25 +263,20 @@ app
         debug('Unknown recipient.');
         return;
       }
-      const mailCharsets = JSON.parse(form.charsets);
-      const convertUtf8 = (convertString, convertCharset) => {
-        const cnv = new Iconv(convertCharset, 'UTF-8//TRANSLIT//IGNORE');
-        return cnv.convert(convertString).toString();
-      }
 
       const mailContent = {
-        'from': convertUtf8(form.from, mailCharsets.from),
-        'subject': convertUtf8(form.subject, mailCharsets.subject),
+        'from': form.from || '',
+        'subject': form.subject || '',
         'body': ''
       };
-      if(mailCharsets.text && form.text) {
-        mailContent.body = convertUtf8(form.text, mailCharsets.text);
+      if (formParts.text && formParts.text.data) {
+        mailContent.body = convertUtf8(formParts.text.data, mailCharsets.text);
       }
-      else if(mailCharsets.html && form.html) {
-        const htmlToText = require('html-to-text');
-        mailContent.body = convertUtf8(htmlToText.convert(form.html), mailCharsets.html);
+      else if (formParts.html && formParts.html.data) {
+        const htmlBody = convertUtf8(formParts.html.data, mailCharsets.html);
+        mailContent.body = htmlToText.convert(htmlBody);
       }
-      const msgBody = `From: ${mailContent.from}\r\nSubject: ${mailContent.subject}\r\n\r\n${mailContent.body}`;
+      const msgBody = truncateLineTextMessage(`From: ${mailContent.from}\r\nSubject: ${mailContent.subject}\r\n\r\n${mailContent.body}`);
       await msgbot.pushMessage({
         to: recipient.line_recipient_id,
         messages: [ { type: 'text', text: msgBody }, ],

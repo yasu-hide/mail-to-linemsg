@@ -32,7 +32,8 @@ LINE Messaging API からのコールバックを受ける。
 
 #### 応答
 
-- 常に先に 200 OK を返す
+- join イベント処理が成功すれば 200 OK
+- 例外発生時は共通エラーハンドラ経由で JSON エラーを返す
 
 ### POST /mail-webhook
 
@@ -84,8 +85,12 @@ MQTT が有効なら、件名から次の payload を作って publish する。
 
 #### 応答
 
-- 常に先に 200 OK を返す
-- 宛先が不正または未登録でも 200 のまま処理終了する
+- 正常処理完了時は 200 OK
+- 主な失敗時は次を返す
+  - 400: multipart boundary 不正、payload 超過、request abort、charsets JSON 不正、To アドレス不正
+  - 404: 宛先未登録
+  - 502: LINE Messaging API push 失敗
+- API/webhook 系のエラー応答には `x-request-id` ヘッダと `requestId` フィールドが含まれる
 
 ## 画面ルート
 
@@ -229,6 +234,21 @@ LINE Login のコールバック。
 
 ## エラー処理
 
-- 多くのルートは try/catch して next(e) に流す
-- グローバルなエラーハンドラは実装されていない
-- 一部外部 API エラーは debug または console.error のみ
+- 多くのルートは try/catch して next(e) に流し、末尾の共通エラーハンドラで整形する
+- API/webhook の失敗応答は概ね次の形式に統一されている
+
+```json
+{
+  "success": false,
+  "msg": "Auth failed.",
+  "requestId": "uuid",
+  "error": {
+    "code": "AUTH_FAILED",
+    "message": "Auth failed.",
+    "details": null
+  }
+}
+```
+
+- request 単位で `x-request-id` を払い出す
+- LINE push と MQTT publish は一時障害時に最小限の再試行を行う

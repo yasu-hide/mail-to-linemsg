@@ -52,5 +52,10 @@
     "eslint-plugin-react-hooks": "^4.0.0",
     "supertest": "^7.2.2"
   },
+  "overrides": {
+    "request": {
+      "form-data": "2.5.5"
+    }
+  },
   "license": "MIT"
 }

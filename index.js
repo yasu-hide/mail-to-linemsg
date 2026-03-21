@@ -343,7 +343,7 @@ app
         req.session.userId = userId;
         return res.redirect(`${req.baseUrl}/`);
       }
-      return res.status(401);
+      return res.status(401).json({ msg: 'Auth failed.' });
     }, (req, res, _, error) => {
       debug(error);
       req.session.destroy();

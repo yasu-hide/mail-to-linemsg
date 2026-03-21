@@ -82,7 +82,6 @@ sequenceDiagram
 	participant MQTT as MQTT Broker
 
 	SendGrid->>App: POST /mail-webhook
-	App-->>SendGrid: 200 OK
 	App->>App: multipart をストリームで解析
 	App->>App: 添付ファイルは保持せず読み捨てる
 	App->>App: To 先頭アドレスの local part を抽出
@@ -101,6 +100,7 @@ sequenceDiagram
 		App->>MQTT: publish({data: "件名の通知があります"})
 		MQTT-->>App: publish 結果
 	end
+	App-->>SendGrid: 200 OK
 ```
 
 ## リクエスト処理の流れ
@@ -173,9 +173,11 @@ sequenceDiagram
 
 ## 実装上の注意点
 
-- /mail-webhook は受信後すぐ 200 を返すため、後段の送信失敗は送信元に再通知されない
+- /mail-webhook は処理完了後に 200 を返し、既知エラーは共通エラーフォーマットで返す
 - /mail-webhook は添付をメモリ保持しないが、text または html 本文は UTF-8 変換のために保持する
 - LINE 送信メッセージは 1 本の text message に集約される
 - LINE 送信メッセージが 5000 文字を超える場合は、`（省略）` を付けて切り詰める
 - MQTT payload は data キーを持つ単純な JSON
 - セッション secret は LINE Login の channel secret を流用している
+- API/webhook には `x-request-id` を付与し、構造化ログで `request.started` と `request.completed` を出す
+- LINE push と MQTT publish は一時障害時に最小限の再試行を行う

@@ -121,3 +121,106 @@ web: node index.js
 - LINE Messaging API: /msg-webhook
 - SendGrid Inbound Mail: /mail-webhook
 - LINE Login callback: /callback
+
+## 手動検証
+
+ローカル起動後、主要なエラーハンドリングを手で確認するときの最小手順。
+
+### 事前準備
+
+1. 必須環境変数を設定して `node index.js` で起動する
+2. API の確認にはログイン済みブラウザのセッションを使うか、同じセッションの Cookie を用意する
+3. エラーレスポンスでは `x-request-id` ヘッダが返ることを確認する
+
+### API の検証
+
+#### 未認証 API
+
+```bash
+curl -i http://localhost:3000/api/user
+```
+
+期待値:
+
+- 401
+- JSON に `error.code: AUTH_FAILED`
+- `x-request-id` ヘッダあり
+
+#### メールアドレス追加の入力検証
+
+```bash
+curl -i \
+	-X POST http://localhost:3000/api/addr \
+	-H 'Content-Type: application/json' \
+	-H 'Cookie: connect.sid=YOUR_SESSION_COOKIE' \
+	-d '{"formInputEmail":"a","formInputRecipient":"dummy"}'
+```
+
+期待値:
+
+- 400 または 401
+- 400 の場合は `error.code` が `EMAIL_TOO_SHORT` などの既知コードになる
+
+### mail-webhook の検証
+
+#### 不正な To アドレス
+
+```bash
+curl -i \
+	-X POST http://localhost:3000/mail-webhook \
+	-F 'to=invalid-address' \
+	-F 'from=test@example.com' \
+	-F 'subject=test' \
+	-F 'charsets={"text":"utf-8"}' \
+	-F 'text=hello'
+```
+
+期待値:
+
+- 400
+- JSON に `error.code: INVALID_TO_ADDRESS`
+- `requestId` がレスポンスに含まれる
+
+#### 未登録 recipient
+
+```bash
+curl -i \
+	-X POST http://localhost:3000/mail-webhook \
+	-F 'to=unknown@example.com' \
+	-F 'from=test@example.com' \
+	-F 'subject=test' \
+	-F 'charsets={"text":"utf-8"}' \
+	-F 'text=hello'
+```
+
+期待値:
+
+- 404
+- JSON に `error.code: UNKNOWN_RECIPIENT`
+
+#### charsets JSON 不正
+
+```bash
+curl -i \
+	-X POST http://localhost:3000/mail-webhook \
+	-F 'to=known@example.com' \
+	-F 'from=test@example.com' \
+	-F 'subject=test' \
+	-F 'charsets={invalid-json}' \
+	-F 'text=hello'
+```
+
+期待値:
+
+- 400
+- JSON に `error.code: INVALID_CHARSETS_PAYLOAD`
+
+### ログの検証
+
+標準出力の debug ログで次を確認する。
+
+- `request.started`
+- `request.completed`
+- LINE push の一時障害時は `line.push.retry`
+- MQTT publish の一時障害時は `mqtt.publish.retry`
+- 失敗時は `request.failed`

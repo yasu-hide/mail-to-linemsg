@@ -10,6 +10,10 @@ const { Iconv } = require('iconv');
 const helmet = require('helmet');
 const emailAddresses = require('email-addresses');
 const htmlToText = require('html-to-text');
+const {
+  getPartTransferEncoding,
+  decodeTransferEncodedBuffer,
+} = require('./lib/transfer-encoding');
 
 const LINELogin = require('line-login');
 const LINEMsgSdk = require ('@line/bot-sdk');
@@ -89,10 +93,6 @@ const getFirstHeaderValue = (headerValue) => {
   }
 
   return headerValue[0];
-};
-const getPartTransferEncoding = (partHeaders) => {
-  const transferEncoding = getFirstHeaderValue(partHeaders && partHeaders['content-transfer-encoding']);
-  return transferEncoding ? transferEncoding.trim().toLowerCase() : '';
 };
 const isMultipartFilePart = (contentDisposition) => /filename=/i.test(contentDisposition || '');
 const streamMultipartForm = (req, maxBytes) => new Promise((resolve, reject) => {
@@ -188,29 +188,6 @@ const convertUtf8 = (valueBuffer, charset) => {
 
   const cnv = new Iconv(charset, 'UTF-8//TRANSLIT//IGNORE');
   return cnv.convert(valueBuffer).toString('utf8');
-};
-const decodeQuotedPrintableBuffer = (valueBuffer) => {
-  const qpText = valueBuffer.toString('latin1');
-  const softBreakRemoved = qpText.replace(/=\r?\n/g, '');
-  const binaryText = softBreakRemoved.replace(/=([0-9A-Fa-f]{2})/g, (_, hex) => (
-    String.fromCharCode(parseInt(hex, 16))
-  ));
-  return Buffer.from(binaryText, 'latin1');
-};
-const decodeTransferEncodedBuffer = (valueBuffer, transferEncoding) => {
-  if (!transferEncoding) {
-    return valueBuffer;
-  }
-
-  if (transferEncoding === 'base64') {
-    const compacted = valueBuffer.toString('ascii').replace(/[\r\n\s]/g, '');
-    return Buffer.from(compacted, 'base64');
-  }
-  if (transferEncoding === 'quoted-printable') {
-    return decodeQuotedPrintableBuffer(valueBuffer);
-  }
-
-  return valueBuffer;
 };
 const truncateLineTextMessage = (message) => {
   const messageChars = Array.from(message);

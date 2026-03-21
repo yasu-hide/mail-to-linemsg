@@ -4,7 +4,8 @@
   "main": "index.js",
   "description": "Notify for mail to LINE Messaging API",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "test:mail-decode": "node test/decode-transfer-encoding.test.js"
   },
   "dependencies": {
     "@line/bot-sdk": "^9.4.1",

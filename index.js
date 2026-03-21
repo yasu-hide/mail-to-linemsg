@@ -26,9 +26,16 @@ const LINEMsgSdk = require ('@line/bot-sdk');
 const MQTTPublish = require('./mqtt-publish');
 const Database = require('./db-pgsql');
 
+const sessionSecret = process.env.SESSION_SECRET || process.env.LINECORP_PLATFORM_LOGIN_CHANNEL_SECRET;
 const sessionOptions = {
-  secret: process.env.LINECORP_PLATFORM_LOGIN_CHANNEL_SECRET,
-  cookie: { maxAge: 600000 },
+  secret: sessionSecret,
+  name: 'mail_to_linemsg.sid',
+  cookie: {
+    maxAge: 600000,
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: false,
+  },
   resave: false,
   saveUninitialized: false,
 };
@@ -320,6 +327,11 @@ const app = express();
 if (app.get('env') === 'production') {
   app.set('trust proxy', 1);
   sessionOptions.cookie.secure = true;
+}
+if (app.get('env') === 'production' && !process.env.SESSION_STORE) {
+  logWarn('session.store.default_memory', {
+    message: 'MemoryStore is active in production. Configure a persistent session store.',
+  });
 }
 const {
   generateCsrfToken,

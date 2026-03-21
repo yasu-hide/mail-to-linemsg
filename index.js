@@ -231,7 +231,6 @@ app
   .use(helmet(helmetOption))
   .post('/msg-webhook', LINEMsgSdk.middleware(msgbotConfig), async (req, res, next) => {
     try {
-      res.sendStatus(200);
       const event = req.body.events[0];
       if(event && event.type === 'join' && event.source.type === 'group') {
         debug('msg-webhook:called');
@@ -240,13 +239,13 @@ app
         debug(`msg-webhook:lineGroupId: ${lineGroupId}`);
         await db.addRecipient(lineGroupId, 1, lineGroupSummary.groupName.substring(0, 63));
       }
+      return res.sendStatus(200);
     } catch (e) {
       next(e);
     }
   })
   .post('/mail-webhook', async (req, res, next) => {
     try {
-      res.sendStatus(200);
       const formParts = await streamMultipartForm(req, mailWebhookMaxBytes);
       const form = Object.keys(formParts).reduce((acc, key) => ({
         ...acc,
@@ -256,12 +255,12 @@ app
       const mailTo = emailAddresses.parseAddressList((form.to || '').replace(/, *$/,''));
       if (!mailTo || mailTo.length <= 0) {
         debug('Invalid To address.');
-        return;
+        return res.sendStatus(202);
       }
       const recipient = await db.getEnabledRecipientByEmail(`${mailTo[0].local}`);
       if (!recipient) {
         debug('Unknown recipient.');
-        return;
+        return res.sendStatus(202);
       }
 
       const mailContent = {
@@ -291,6 +290,7 @@ app
         mqttPublish.publish(mailContent.subject)
           .catch((msg) => debug(msg));
       }
+      return res.sendStatus(200);
     } catch(e) {
       next(e)
     }

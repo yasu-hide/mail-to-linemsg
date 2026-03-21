@@ -61,10 +61,20 @@ npm start
 
 - express-session
 - helmet
+- csrf-csrf（`/api/csrf-token`、`POST /api/addr`、`DELETE /api/addr/:extAddrId` に適用）
 - Dicer による multipart ストリーム解析 for /mail-webhook
 - express.static for public
 - bodyParser.urlencoded
 - bodyParser.json
+
+推奨順序:
+
+- express-session
+- bodyParser.urlencoded / bodyParser.json
+- cookie-parser
+- csrf-csrf（API の状態変更ルート）
+- ルートハンドラ
+- 共通エラーハンドラ
 
 ### 本番時の挙動
 
@@ -148,11 +158,25 @@ curl -i http://localhost:3000/api/user
 
 #### メールアドレス追加の入力検証
 
+事前に CSRF トークンを取得してヘッダに設定する。
+
+```bash
+curl -i \
+	-X GET http://localhost:3000/api/csrf-token \
+	-H 'Cookie: connect.sid=YOUR_SESSION_COOKIE'
+```
+
+期待値:
+
+- 200
+- JSON に `result.csrfToken` が含まれる
+
 ```bash
 curl -i \
 	-X POST http://localhost:3000/api/addr \
 	-H 'Content-Type: application/json' \
 	-H 'Cookie: connect.sid=YOUR_SESSION_COOKIE' \
+	-H 'X-CSRF-Token: YOUR_CSRF_TOKEN' \
 	-d '{"formInputEmail":"a","formInputRecipient":"dummy"}'
 ```
 
@@ -160,6 +184,19 @@ curl -i \
 
 - 400 または 401
 - 400 の場合は `error.code` が `EMAIL_TOO_SHORT` などの既知コードになる
+
+トークン無しで状態変更 API を実行した場合の確認:
+
+```bash
+curl -i \
+	-X DELETE http://localhost:3000/api/addr/00000000-0000-0000-0000-000000000000 \
+	-H 'Cookie: connect.sid=YOUR_SESSION_COOKIE'
+```
+
+期待値:
+
+- 403
+- JSON に `error.code: CSRF_TOKEN_INVALID`
 
 ### mail-webhook の検証
 

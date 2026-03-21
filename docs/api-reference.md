@@ -6,6 +6,26 @@
 - セッション保存値: req.session.userId
 - 格納値の実体: user_master.ext_user_id
 - 未認証時の API 応答: 主に 401
+- 状態変更 API は csrf-csrf の CSRF トークンが必須（`X-CSRF-Token` ヘッダ）
+
+### GET /api/csrf-token
+
+状態変更 API 実行前に CSRF トークンを取得する。
+
+#### 認証
+
+- 必要（未認証の場合は 401）
+
+#### 応答例
+
+```json
+{
+  "msg": "Success",
+  "result": {
+    "csrfToken": "token-value"
+  }
+}
+```
 
 ## Webhook
 
@@ -197,6 +217,10 @@ LINE Login のコールバック。
 }
 ```
 
+#### 必須ヘッダ
+
+- `X-CSRF-Token: {GET /api/csrf-token で取得した値}`
+
 #### 入力検証
 
 - formInputEmail 必須
@@ -227,6 +251,10 @@ LINE Login のコールバック。
 
 - ログイン済みユーザーに紐づく一覧から対象確認を試みる
 - 対象が見つかれば addr_master から削除する
+
+#### 必須ヘッダ
+
+- `X-CSRF-Token: {GET /api/csrf-token で取得した値}`
 
 #### 補足
 

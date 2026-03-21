@@ -59,6 +59,9 @@
     "filelist": {
       "minimatch": "5.1.8"
     },
+    "line-login": {
+      "jsonwebtoken": "9.0.3"
+    },
     "minimatch": "3.1.4",
     "request": {
       "form-data": "2.5.5"

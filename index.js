@@ -280,9 +280,14 @@ app
         to: recipient.line_recipient_id,
         messages: [ { type: 'text', text: msgBody }, ],
       }).catch((err) => {
-        if(err instanceof HTTPFetchError) {
-          console.error(err.status);
-          console.error(err.headers.get('x-line-request-id'));
+        const lineRequestId = err && err.headers && typeof err.headers.get === 'function'
+          ? err.headers.get('x-line-request-id')
+          : undefined;
+        console.error(err && (err.statusCode || err.status || err.message || err));
+        if (lineRequestId) {
+          console.error(lineRequestId);
+        }
+        if (err && err.body) {
           console.error(err.body);
         }
       });

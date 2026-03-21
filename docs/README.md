@@ -38,3 +38,17 @@
 2. [api-reference.md](./api-reference.md)
 3. [data-model.md](./data-model.md)
 4. [configuration.md](./configuration.md)
+
+## コミット採番ルール
+
+変更計画ベースで、コミットメッセージの採番を次のように統一する。
+
+- patchlevel: Todo の変更計画における大分類
+- patchrev: patchlevel の内訳変更番号
+- 形式: `P{patchlevel}-{patchrev}: {description}`
+
+運用ルール。
+
+- 新しい大分類に入ったら patchlevel を 1 つ進める
+- 同じ大分類の追加変更は patchrev を 1 つ進める
+- patchlevel が変わると patchrev は 1 に戻す

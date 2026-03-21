@@ -115,17 +115,6 @@ npm start
 
 - nodemon をグローバルインストールして ENTRYPOINT に設定
 
-## Fly.io 設定
-
-fly.toml では次を定義している。
-
-- internal_port=3000
-- force_https=true
-- primary_region=nrt
-- process command=/app/index.js
-
-また、LINECORP_PLATFORM_LOGIN_CHANNEL_CALLBACKURL を Fly の URL に設定している。
-
 ## Procfile
 
 ```text

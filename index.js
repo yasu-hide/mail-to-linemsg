@@ -23,6 +23,9 @@ const {
 const {
   regenerateSessionWithUser,
 } = require('./lib/session-security');
+const {
+  isOwnedAddress,
+} = require('./lib/address-ownership');
 
 const LINEMsgSdk = require ('@line/bot-sdk');
 const MQTTPublish = require('./mqtt-publish');
@@ -772,11 +775,7 @@ app
         throw new AppError('ADDRESS_NOT_FOUND', 'Address is not found.', 404);
       }
       const registeredAddr = await db.getRegisteredAddrByExtUserId(extUserId);
-      const deleteCandidate = registeredAddr.some((registeredAddrObj) => (
-        addr.addr_id === registeredAddrObj.addr_id
-        && addr.ext_addr_id === registeredAddrObj.ext_addr_id
-      ));
-      if (!deleteCandidate) {
+      if (!isOwnedAddress(addr, registeredAddr)) {
         throw new AppError('ADDRESS_NOT_OWNED', 'Address is not registered by this user.', 404, {
           extAddrId,
         });

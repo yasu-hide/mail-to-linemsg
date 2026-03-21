@@ -9,7 +9,8 @@
         RECIPIENT_NOT_FOUND: '送信先が見つからない。',
         RECIPIENT_UNAVAILABLE: 'その送信先は今使えない。',
         ADDRESS_NOT_FOUND: '対象のアドレスが見つからない。',
-        ADDRESS_NOT_OWNED: 'そのアドレスは削除できない。'
+        ADDRESS_NOT_OWNED: 'そのアドレスは削除できない。',
+        CSRF_TOKEN_INVALID: '画面を再読み込みして、もう一回試して。'
     };
 
     const getErrorBanner = (() => {
@@ -63,6 +64,15 @@
         throw new Error(message);
     });
 
+    const csrfTokenPayload = await fetch('/api/csrf-token').then(readApiResponse);
+    const csrfToken = csrfTokenPayload
+        && csrfTokenPayload.result
+        && csrfTokenPayload.result.csrfToken;
+
+    const getCsrfHeaders = (() => ({
+        'X-CSRF-Token': csrfToken,
+    }));
+
     const availableRecipientPayload = await fetch("/api/recipient").then(readApiResponse);
     const availableRecipient = availableRecipientPayload.result || [];
 
@@ -113,7 +123,8 @@
                 method: 'DELETE',
                 headers: {
                     'Accept': 'application/json',
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    ...getCsrfHeaders(),
                 }
             });
             if(res.status == 200) {
@@ -150,7 +161,8 @@
                 method: 'POST',
                 headers: {
                     'Accept': 'application/json',
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    ...getCsrfHeaders(),
                 },
                 body: JSON.stringify({
                     formInputEmail: formInputEmailNew,

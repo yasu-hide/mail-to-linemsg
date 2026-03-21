@@ -54,10 +54,16 @@
     "@line/bot-sdk": {
       "axios": "1.13.5"
     },
+    "eslint": {
+      "ajv": "6.14.0"
+    },
     "filelist": {
       "minimatch": "5.1.8"
     },
-    "minimatch": "3.1.4"
+    "minimatch": "3.1.4",
+    "table": {
+      "ajv": "8.18.0"
+    }
   },
   "license": "MIT"
 }

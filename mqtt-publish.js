@@ -19,7 +19,7 @@ class Mqtt {
 
   connect() {
     if (!this.client || !this.client.connected) {
-      debug(`Connecting to ${this.uri} username=${this.username} password=${this.password}`);
+      debug(`Connecting to ${this.uri} username=${this.username}`);
       this.client = mqtt.connect(this.uri, { username: this.username, password: this.password });
     }
   }

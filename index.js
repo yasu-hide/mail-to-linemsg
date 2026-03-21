@@ -371,6 +371,16 @@ const getAvailableRecipient = async (extUserId) => {
   );
   return [ ...recipientUser, ...recipientGroup ];
 };
+const regenerateSession = (req) => new Promise((resolve, reject) => {
+  req.session.regenerate((error) => {
+    if (error) {
+      reject(error);
+      return;
+    }
+
+    resolve();
+  });
+});
 
 app
   .use((req, res, next) => {
@@ -572,6 +582,7 @@ app
         const lineUserProfile = await msgbot.getProfile(lineUserId)
           .catch(() => Promise.resolve({ displayName: 'self' }));
         await db.addRecipient(lineUserId, 0, lineUserProfile.displayName.substring(0, 63), userId);
+        await regenerateSession(req);
         req.session.userId = userId;
         logInfo('auth.callback.succeeded', {
           requestId: req.requestId,

@@ -8,6 +8,10 @@
 - LINECORP_PLATFORM_LOGIN_CHANNEL_SECRET
 - LINECORP_PLATFORM_LOGIN_CHANNEL_CALLBACKURL
 
+### セッション
+
+- SESSION_SECRET
+
 ### LINE Messaging API
 
 - LINECORP_PLATFORM_MESSAGING_CHANNEL_ACCESSTOKEN
@@ -18,6 +22,16 @@
 - DATABASE_URL
 
 ## 任意環境変数
+
+### セッション
+
+- SESSION_STORE
+
+補足:
+
+- `SESSION_SECRET` 未設定時は `LINECORP_PLATFORM_LOGIN_CHANNEL_SECRET` をフォールバックで使用する
+- `SESSION_STORE` は本番で外部セッションストアを使う場合の運用フラグとして扱う
+- `NODE_ENV=production` かつ `SESSION_STORE` 未設定の場合、起動時に MemoryStore 利用の警告を出力する
 
 ### MQTT
 
@@ -80,6 +94,7 @@ npm start
 
 - app.get('env') が production のとき trust proxy を有効化
 - session cookie.secure を true に設定
+- session cookie は `mail_to_linemsg.sid` を利用し、`httpOnly=true`、`sameSite=lax` を固定
 
 ## ビューと静的ファイル
 
@@ -163,7 +178,7 @@ curl -i http://localhost:3000/api/user
 ```bash
 curl -i \
 	-X GET http://localhost:3000/api/csrf-token \
-	-H 'Cookie: connect.sid=YOUR_SESSION_COOKIE'
+	-H 'Cookie: mail_to_linemsg.sid=YOUR_SESSION_COOKIE'
 ```
 
 期待値:
@@ -175,7 +190,7 @@ curl -i \
 curl -i \
 	-X POST http://localhost:3000/api/addr \
 	-H 'Content-Type: application/json' \
-	-H 'Cookie: connect.sid=YOUR_SESSION_COOKIE' \
+	-H 'Cookie: mail_to_linemsg.sid=YOUR_SESSION_COOKIE' \
 	-H 'X-CSRF-Token: YOUR_CSRF_TOKEN' \
 	-d '{"formInputEmail":"a","formInputRecipient":"dummy"}'
 ```
@@ -190,7 +205,7 @@ curl -i \
 ```bash
 curl -i \
 	-X DELETE http://localhost:3000/api/addr/00000000-0000-0000-0000-000000000000 \
-	-H 'Cookie: connect.sid=YOUR_SESSION_COOKIE'
+	-H 'Cookie: mail_to_linemsg.sid=YOUR_SESSION_COOKIE'
 ```
 
 期待値:

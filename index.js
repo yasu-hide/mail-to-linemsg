@@ -1,5 +1,6 @@
 require('dotenv').config();
 
+const { randomUUID } = require('crypto');
 const express = require('express');
 const session = require('express-session');
 const bodyParser = require('body-parser');
@@ -202,6 +203,16 @@ class AppError extends Error {
     this.details = details;
   }
 }
+const createRequestId = () => randomUUID();
+const createLogEntry = (level, event, details = {}) => JSON.stringify({
+  level,
+  event,
+  timestamp: new Date().toISOString(),
+  ...details,
+});
+const logInfo = (event, details) => debug(createLogEntry('info', event, details));
+const logWarn = (event, details) => debug(createLogEntry('warn', event, details));
+const logError = (event, details) => debug(createLogEntry('error', event, details));
 const normalizeAppError = (error) => {
   if (error instanceof AppError) {
     return error;
@@ -223,9 +234,10 @@ const normalizeAppError = (error) => {
 
   return new AppError('INTERNAL_ERROR', 'Internal server error.', 500);
 };
-const createApiErrorResponse = (appError) => ({
+const createApiErrorResponse = (appError, req) => ({
   success: false,
   msg: appError.message,
+  requestId: req.requestId,
   error: {
     code: appError.code,
     message: appError.message,
@@ -233,6 +245,40 @@ const createApiErrorResponse = (appError) => ({
   },
 });
 const isApiLikeRequest = (req) => req.path.startsWith('/api/') || req.path.includes('webhook');
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const shouldRetryLineError = (error) => {
+  const statusCode = error && (error.statusCode || error.status);
+  return !statusCode || statusCode >= 500;
+};
+const shouldRetryMqttError = (error) => Boolean(error);
+const retryAsync = async ({
+  operation,
+  retries,
+  initialDelayMs,
+  shouldRetry,
+  onRetry,
+}) => {
+  let attempt = 0;
+  let delayMs = initialDelayMs;
+
+  while (true) {
+    try {
+      return await operation();
+    } catch (error) {
+      const canRetry = attempt < retries && shouldRetry(error);
+      if (!canRetry) {
+        throw error;
+      }
+
+      attempt += 1;
+      if (onRetry) {
+        onRetry(error, attempt, delayMs);
+      }
+      await delay(delayMs);
+      delayMs *= 2;
+    }
+  }
+};
 
 const app = express();
 if (app.get('env') === 'production') {
@@ -275,16 +321,29 @@ const getAvailableRecipient = async (extUserId) => {
 };
 
 app
+  .use((req, res, next) => {
+    req.requestId = createRequestId();
+    res.setHeader('x-request-id', req.requestId);
+    logInfo('request.started', {
+      requestId: req.requestId,
+      method: req.method,
+      path: req.path,
+    });
+    next();
+  })
   .use(session(sessionOptions))
   .use(helmet(helmetOption))
   .post('/msg-webhook', LINEMsgSdk.middleware(msgbotConfig), async (req, res, next) => {
     try {
       const event = req.body.events[0];
       if(event && event.type === 'join' && event.source.type === 'group') {
-        debug('msg-webhook:called');
+        logInfo('line.group_join.received', { requestId: req.requestId });
         const lineGroupId = event.source.groupId;
         const lineGroupSummary = await msgbot.getGroupSummary(lineGroupId);
-        debug(`msg-webhook:lineGroupId: ${lineGroupId}`);
+        logInfo('line.group_join.recipient_sync', {
+          requestId: req.requestId,
+          lineGroupId,
+        });
         await db.addRecipient(lineGroupId, 1, lineGroupSummary.groupName.substring(0, 63));
       }
       return res.sendStatus(200);
@@ -307,12 +366,15 @@ app
       }
       const mailTo = emailAddresses.parseAddressList((form.to || '').replace(/, *$/,''));
       if (!mailTo || mailTo.length <= 0) {
-        debug('Invalid To address.');
+        logWarn('mail_webhook.invalid_to_address', { requestId: req.requestId });
         throw new AppError('INVALID_TO_ADDRESS', 'Invalid To address.', 400);
       }
       const recipient = await db.getEnabledRecipientByEmail(`${mailTo[0].local}`);
       if (!recipient) {
-        debug('Unknown recipient.');
+        logWarn('mail_webhook.unknown_recipient', {
+          requestId: req.requestId,
+          localPart: mailTo[0].local,
+        });
         throw new AppError('UNKNOWN_RECIPIENT', 'Unknown recipient.', 404);
       }
 
@@ -329,9 +391,22 @@ app
         mailContent.body = htmlToText.convert(htmlBody);
       }
       const msgBody = truncateLineTextMessage(`From: ${mailContent.from}\r\nSubject: ${mailContent.subject}\r\n\r\n${mailContent.body}`);
-      await msgbot.pushMessage({
-        to: recipient.line_recipient_id,
-        messages: [ { type: 'text', text: msgBody }, ],
+      await retryAsync({
+        operation: () => msgbot.pushMessage({
+          to: recipient.line_recipient_id,
+          messages: [ { type: 'text', text: msgBody }, ],
+        }),
+        retries: 2,
+        initialDelayMs: 200,
+        shouldRetry: shouldRetryLineError,
+        onRetry: (error, attempt, delayMs) => {
+          logWarn('line.push.retry', {
+            requestId: req.requestId,
+            attempt,
+            delayMs,
+            statusCode: error && (error.statusCode || error.status),
+          });
+        },
       }).catch((err) => {
         const lineRequestId = err && err.headers && typeof err.headers.get === 'function'
           ? err.headers.get('x-line-request-id')
@@ -343,8 +418,25 @@ app
         });
       });
       if (mqttPublish !== null) {
-        mqttPublish.publish(mailContent.subject)
-          .catch((msg) => debug(msg));
+        retryAsync({
+          operation: () => mqttPublish.publish(mailContent.subject),
+          retries: 2,
+          initialDelayMs: 200,
+          shouldRetry: shouldRetryMqttError,
+          onRetry: (error, attempt, delayMs) => {
+            logWarn('mqtt.publish.retry', {
+              requestId: req.requestId,
+              attempt,
+              delayMs,
+              message: error && error.message,
+            });
+          },
+        }).catch((error) => {
+          logError('mqtt.publish.failed', {
+            requestId: req.requestId,
+            message: error && error.message,
+          });
+        });
       }
       return res.sendStatus(200);
     } catch(e) {
@@ -359,7 +451,7 @@ app
   .set('view engine', 'ejs')
   .get('/', async (req, res) => {
     const extUserId = req.session.userId;
-    debug('index:extUserId', extUserId);
+    logInfo('page.index.render', { requestId: req.requestId, extUserId });
     if (! await isLoggedIn(extUserId)) {
       res.redirect(`${req.baseUrl}/login`);
       return;
@@ -396,7 +488,10 @@ app
       }
       return res.status(401).json({ msg: 'Auth failed.' });
     }, (req, res, _, error) => {
-      debug(error);
+      logWarn('auth.callback.failed', {
+        requestId: req.requestId,
+        message: error && error.message,
+      });
       req.session.destroy();
       return res.redirect(`${req.baseUrl}/login?reason=login_failed`);
     },
@@ -512,8 +607,9 @@ app
   })
   .use((err, req, res, next) => {
     const appError = normalizeAppError(err);
-    debug('Unhandled error: %o', {
+    logError('request.failed', {
       path: req.path,
+      requestId: req.requestId,
       code: appError.code,
       httpStatus: appError.httpStatus,
       message: err && err.message,
@@ -525,9 +621,9 @@ app
     }
 
     if (isApiLikeRequest(req)) {
-      return res.status(appError.httpStatus).json(createApiErrorResponse(appError));
+      return res.status(appError.httpStatus).json(createApiErrorResponse(appError, req));
     }
 
     return res.status(appError.httpStatus).send(appError.message);
   })
-  .listen(listenPort, () => debug(`Listening on ${listenPort}`));
+  .listen(listenPort, () => logInfo('server.started', { listenPort }));

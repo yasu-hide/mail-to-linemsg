@@ -231,7 +231,6 @@ app
   .use(helmet(helmetOption))
   .post('/msg-webhook', LINEMsgSdk.middleware(msgbotConfig), async (req, res, next) => {
     try {
-      res.sendStatus(200);
       const event = req.body.events[0];
       if(event && event.type === 'join' && event.source.type === 'group') {
         debug('msg-webhook:called');
@@ -240,13 +239,13 @@ app
         debug(`msg-webhook:lineGroupId: ${lineGroupId}`);
         await db.addRecipient(lineGroupId, 1, lineGroupSummary.groupName.substring(0, 63));
       }
+      return res.sendStatus(200);
     } catch (e) {
       next(e);
     }
   })
   .post('/mail-webhook', async (req, res, next) => {
     try {
-      res.sendStatus(200);
       const formParts = await streamMultipartForm(req, mailWebhookMaxBytes);
       const form = Object.keys(formParts).reduce((acc, key) => ({
         ...acc,
@@ -256,12 +255,12 @@ app
       const mailTo = emailAddresses.parseAddressList((form.to || '').replace(/, *$/,''));
       if (!mailTo || mailTo.length <= 0) {
         debug('Invalid To address.');
-        return;
+        return res.sendStatus(202);
       }
       const recipient = await db.getEnabledRecipientByEmail(`${mailTo[0].local}`);
       if (!recipient) {
         debug('Unknown recipient.');
-        return;
+        return res.sendStatus(202);
       }
 
       const mailContent = {
@@ -281,9 +280,14 @@ app
         to: recipient.line_recipient_id,
         messages: [ { type: 'text', text: msgBody }, ],
       }).catch((err) => {
-        if(err instanceof HTTPFetchError) {
-          console.error(err.status);
-          console.error(err.headers.get('x-line-request-id'));
+        const lineRequestId = err && err.headers && typeof err.headers.get === 'function'
+          ? err.headers.get('x-line-request-id')
+          : undefined;
+        console.error(err && (err.statusCode || err.status || err.message || err));
+        if (lineRequestId) {
+          console.error(lineRequestId);
+        }
+        if (err && err.body) {
           console.error(err.body);
         }
       });
@@ -291,6 +295,7 @@ app
         mqttPublish.publish(mailContent.subject)
           .catch((msg) => debug(msg));
       }
+      return res.sendStatus(200);
     } catch(e) {
       next(e)
     }
@@ -338,7 +343,7 @@ app
         req.session.userId = userId;
         return res.redirect(`${req.baseUrl}/`);
       }
-      return res.status(401);
+      return res.status(401).json({ msg: 'Auth failed.' });
     }, (req, res, _, error) => {
       debug(error);
       req.session.destroy();
@@ -416,7 +421,7 @@ app
         emailAddr = `${inputEmail}@local`;
       }
       const emailObj = emailAddresses.parseOneAddress(emailAddr);
-      if(!emailAddr) {
+      if(!emailObj || !emailObj.local) {
         return res.status(400).json({ msg: 'Email address is invalid format.' });
       }
       if(emailObj.local.length < 4) {
@@ -456,7 +461,10 @@ app
       }
       const addr = await db.getAddrByExtAddrId(extAddrId);
       const registeredAddr = await db.getRegisteredAddrByExtUserId(extUserId);
-      const deleteCandidate = registeredAddr.filter(registeredAddrObj => { (addr.addr_id === registeredAddrObj.addr_id) && (addr.ext_addr_id === registeredAddrObj.ext_addr_id) });
+      const deleteCandidate = registeredAddr.some((registeredAddrObj) => (
+        addr.addr_id === registeredAddrObj.addr_id
+        && addr.ext_addr_id === registeredAddrObj.ext_addr_id
+      ));
       if (!deleteCandidate) {
         return res.status(204).json({ msg: 'No content', result: [] });
       }

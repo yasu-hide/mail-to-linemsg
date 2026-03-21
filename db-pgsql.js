@@ -112,7 +112,7 @@ class Database {
     if (addr) {
       return addr;
     }
-    throw new Error(`SystemError: cannot create addr ${email}`);
+    throw new Error(`SystemError: cannot create addr ${emailAddr}`);
   }
 
   async getAddrByEmail(emailAddr) {
@@ -125,7 +125,7 @@ class Database {
     if(res.length === 1) {
       return res[0];
     }
-    throw new Error(`SystemError: duplicate e-mail address ${email}`);
+    throw new Error(`SystemError: duplicate e-mail address ${emailAddr}`);
   }
 
   async getAddrByExtAddrId(extAddrId) {

@@ -61,7 +61,7 @@ npm start
 
 - express-session
 - helmet
-- csurf（`/api/csrf-token`、`POST /api/addr`、`DELETE /api/addr/:extAddrId` に適用）
+- csrf-csrf（`/api/csrf-token`、`POST /api/addr`、`DELETE /api/addr/:extAddrId` に適用）
 - Dicer による multipart ストリーム解析 for /mail-webhook
 - express.static for public
 - bodyParser.urlencoded
@@ -71,7 +71,8 @@ npm start
 
 - express-session
 - bodyParser.urlencoded / bodyParser.json
-- csurf（API の状態変更ルート）
+- cookie-parser
+- csrf-csrf（API の状態変更ルート）
 - ルートハンドラ
 - 共通エラーハンドラ
 

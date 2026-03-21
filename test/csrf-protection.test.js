@@ -2,34 +2,51 @@ const assert = require('assert');
 const express = require('express');
 const bodyParser = require('body-parser');
 const session = require('express-session');
-const csurf = require('csurf');
+const cookieParser = require('cookie-parser');
+const { doubleCsrf } = require('csrf-csrf');
 const request = require('supertest');
 
 const createTestApp = () => {
   const app = express();
-  const csrfProtection = csurf();
+  const {
+    generateCsrfToken,
+    doubleCsrfProtection,
+    invalidCsrfTokenError,
+  } = doubleCsrf({
+    getSecret: () => 'csrf-test-secret',
+    getSessionIdentifier: (req) => req.sessionID || '',
+    getTokenFromRequest: (req) => req.headers['x-csrf-token'],
+    cookieName: '__Host-mail-to-linemsg.test-csrf-token',
+    cookieOptions: {
+      sameSite: 'lax',
+      secure: false,
+      httpOnly: true,
+      path: '/',
+    },
+  });
 
   app.use(session({
     secret: 'test-secret',
     resave: false,
-    saveUninitialized: false,
+    saveUninitialized: true,
   }));
+  app.use(cookieParser('test-secret'));
   app.use(bodyParser.json());
 
-  app.get('/api/csrf-token', csrfProtection, (req, res) => {
+  app.get('/api/csrf-token', (req, res) => {
     res.status(200).json({
       result: {
-        csrfToken: req.csrfToken(),
+        csrfToken: generateCsrfToken(req, res),
       },
     });
   });
 
-  app.post('/api/protected', csrfProtection, (req, res) => {
+  app.post('/api/protected', doubleCsrfProtection, (req, res) => {
     res.status(200).json({ msg: 'ok' });
   });
 
   app.use((err, req, res, next) => {
-    if (err && err.code === 'EBADCSRFTOKEN') {
+    if (err === invalidCsrfTokenError || (err && err.code === 'EBADCSRFTOKEN')) {
       return res.status(403).json({ code: 'CSRF_TOKEN_INVALID' });
     }
 
@@ -60,7 +77,8 @@ const run = async () => {
   }
 
   {
-    const resWithoutToken = await request(app)
+    await agent.get('/api/csrf-token');
+    const resWithoutToken = await agent
       .post('/api/protected')
       .send({ value: 1 });
     assert.strictEqual(resWithoutToken.status, 403);

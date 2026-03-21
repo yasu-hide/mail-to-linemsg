@@ -3,7 +3,8 @@ require('dotenv').config();
 const { randomUUID } = require('crypto');
 const express = require('express');
 const session = require('express-session');
-const csurf = require('csurf');
+const cookieParser = require('cookie-parser');
+const { doubleCsrf } = require('csrf-csrf');
 const bodyParser = require('body-parser');
 const debug = require('debug')('index');
 const Dicer = require('dicer');
@@ -249,7 +250,7 @@ const normalizeAppError = (error) => {
     return error;
   }
 
-  if (error && error.code === 'EBADCSRFTOKEN') {
+  if (error === invalidCsrfTokenError || (error && error.code === 'EBADCSRFTOKEN')) {
     return new AppError('CSRF_TOKEN_INVALID', 'Invalid CSRF token.', 403);
   }
 
@@ -316,11 +317,26 @@ const retryAsync = async ({
 };
 
 const app = express();
-const csrfProtection = csurf();
 if (app.get('env') === 'production') {
   app.set('trust proxy', 1);
   sessionOptions.cookie.secure = true;
 }
+const {
+  generateCsrfToken,
+  doubleCsrfProtection,
+  invalidCsrfTokenError,
+} = doubleCsrf({
+  getSecret: () => process.env.CSRF_SECRET || sessionOptions.secret,
+  getSessionIdentifier: (req) => req.sessionID || '',
+  getTokenFromRequest: (req) => req.headers['x-csrf-token'],
+  cookieName: '__Host-mail-to-linemsg.x-csrf-token',
+  cookieOptions: {
+    sameSite: 'lax',
+    secure: app.get('env') === 'production',
+    httpOnly: true,
+    path: '/',
+  },
+});
 const isLoggedIn = async (extUserId) => {
   if(!extUserId) {
     debug('isLoggedIn:' + extUserId);
@@ -378,6 +394,7 @@ app
     next();
   })
   .use(session(sessionOptions))
+  .use(cookieParser(sessionOptions.secret))
   .use(helmet(helmetOption))
   .post('/msg-webhook', LINEMsgSdk.middleware(msgbotConfig), async (req, res, next) => {
     try {
@@ -612,20 +629,20 @@ app
       next(e);
     }
   })
-  .get('/api/csrf-token', csrfProtection, async (req, res, next) => {
+  .get('/api/csrf-token', async (req, res, next) => {
     try {
       await requireAuthenticatedUser(req);
       res.status(200).json({
         msg: 'Success',
         result: {
-          csrfToken: req.csrfToken(),
+          csrfToken: generateCsrfToken(req, res),
         },
       });
     } catch (e) {
       next(e);
     }
   })
-  .post('/api/addr', csrfProtection, async (req, res, next) => {
+  .post('/api/addr', doubleCsrfProtection, async (req, res, next) => {
     try {
       const extUserId = await requireAuthenticatedUser(req);
       const inputEmail = req.body.formInputEmail;
@@ -671,7 +688,7 @@ app
       next(e);
     }
   })
-  .delete('/api/addr/:extAddrId', csrfProtection, async (req, res, next) => {
+  .delete('/api/addr/:extAddrId', doubleCsrfProtection, async (req, res, next) => {
     try {
       const extAddrId = req.params.extAddrId;
       const extUserId = await requireAuthenticatedUser(req);

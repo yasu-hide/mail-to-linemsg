@@ -6,7 +6,7 @@
 - セッション保存値: req.session.userId
 - 格納値の実体: user_master.ext_user_id
 - 未認証時の API 応答: 主に 401
-- 状態変更 API は CSRF トークンが必須（`X-CSRF-Token` ヘッダ）
+- 状態変更 API は csrf-csrf の CSRF トークンが必須（`X-CSRF-Token` ヘッダ）
 
 ### GET /api/csrf-token
 

@@ -364,6 +364,7 @@ const app = express();
 if (app.get('env') === 'production') {
   app.set('trust proxy', 1);
 }
+const isProduction = app.get('env') === 'production';
 if (app.get('env') === 'production' && !process.env.SESSION_STORE) {
   logWarn('session.store.default_memory', {
     message: 'MemoryStore is active in production. Configure a persistent session store.',
@@ -377,10 +378,12 @@ const {
   getSecret: () => process.env.CSRF_SECRET || sessionOptions.secret,
   getSessionIdentifier: (req) => req.sessionID || '',
   getTokenFromRequest: (req) => req.headers['x-csrf-token'],
-  cookieName: '__Host-mail-to-linemsg.x-csrf-token',
+  cookieName: isProduction
+    ? '__Host-mail-to-linemsg.x-csrf-token'
+    : 'mail-to-linemsg.x-csrf-token',
   cookieOptions: {
     sameSite: 'lax',
-    secure: app.get('env') === 'production',
+    secure: isProduction,
     httpOnly: true,
     path: '/',
   },

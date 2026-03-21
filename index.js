@@ -3,6 +3,7 @@ require('dotenv').config();
 const { randomUUID } = require('crypto');
 const express = require('express');
 const session = require('express-session');
+const csurf = require('csurf');
 const bodyParser = require('body-parser');
 const debug = require('debug')('index');
 const Dicer = require('dicer');
@@ -248,6 +249,10 @@ const normalizeAppError = (error) => {
     return error;
   }
 
+  if (error && error.code === 'EBADCSRFTOKEN') {
+    return new AppError('CSRF_TOKEN_INVALID', 'Invalid CSRF token.', 403);
+  }
+
   const message = error && error.message;
   if (message === 'Multipart boundary is missing.') {
     return new AppError('INVALID_MULTIPART_REQUEST', message, 400);
@@ -311,6 +316,7 @@ const retryAsync = async ({
 };
 
 const app = express();
+const csrfProtection = csurf();
 if (app.get('env') === 'production') {
   app.set('trust proxy', 1);
   sessionOptions.cookie.secure = true;
@@ -606,7 +612,20 @@ app
       next(e);
     }
   })
-  .post('/api/addr', async (req, res, next) => {
+  .get('/api/csrf-token', csrfProtection, async (req, res, next) => {
+    try {
+      await requireAuthenticatedUser(req);
+      res.status(200).json({
+        msg: 'Success',
+        result: {
+          csrfToken: req.csrfToken(),
+        },
+      });
+    } catch (e) {
+      next(e);
+    }
+  })
+  .post('/api/addr', csrfProtection, async (req, res, next) => {
     try {
       const extUserId = await requireAuthenticatedUser(req);
       const inputEmail = req.body.formInputEmail;
@@ -652,7 +671,7 @@ app
       next(e);
     }
   })
-  .delete('/api/addr/:extAddrId', async (req, res, next) => {
+  .delete('/api/addr/:extAddrId', csrfProtection, async (req, res, next) => {
     try {
       const extAddrId = req.params.extAddrId;
       const extUserId = await requireAuthenticatedUser(req);

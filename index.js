@@ -7,7 +7,7 @@ const cookieParser = require('cookie-parser');
 const { doubleCsrf } = require('csrf-csrf');
 const bodyParser = require('body-parser');
 const debug = require('debug')('index');
-const Dicer = require('dicer');
+const Busboy = require('busboy');
 const helmet = require('helmet');
 const emailAddresses = require('email-addresses');
 const htmlToText = require('html-to-text');
@@ -93,25 +93,15 @@ const getMultipartBoundary = (contentType) => {
 
   return matched[1] || matched[2];
 };
-const getMultipartFieldName = (contentDisposition) => {
-  if (!contentDisposition) {
-    return null;
-  }
-
-  const matched = contentDisposition.match(/name="([^"]+)"/i);
-  return matched ? matched[1] : null;
-};
-const getFirstHeaderValue = (headerValue) => {
-  if (!Array.isArray(headerValue) || headerValue.length <= 0) {
-    return null;
-  }
-
-  return headerValue[0];
-};
-const isMultipartFilePart = (contentDisposition) => /filename=/i.test(contentDisposition || '');
 const streamMultipartForm = (req, maxBytes) => new Promise((resolve, reject) => {
-  const boundary = getMultipartBoundary(req.headers['content-type'] || '');
-  const parser = new Dicer({ boundary });
+  getMultipartBoundary(req.headers['content-type'] || '');
+  const parser = Busboy({
+    headers: req.headers,
+    limits: {
+      files: 0,
+      fieldSize: maxBytes,
+    },
+  });
   const formParts = {};
   let totalBytes = 0;
   let isSettled = false;
@@ -122,7 +112,11 @@ const streamMultipartForm = (req, maxBytes) => new Promise((resolve, reject) => 
     req.removeListener('error', handleError);
     parser.removeListener('error', handleError);
     parser.removeListener('finish', handleFinish);
-    parser.removeListener('part', handlePart);
+    parser.removeListener('field', handleField);
+    parser.removeListener('file', handleFile);
+    parser.removeListener('fieldsLimit', handleLimitExceeded);
+    parser.removeListener('filesLimit', handleLimitExceeded);
+    parser.removeListener('partsLimit', handleLimitExceeded);
   };
   const settleError = (error) => {
     if (isSettled) {
@@ -136,6 +130,7 @@ const streamMultipartForm = (req, maxBytes) => new Promise((resolve, reject) => 
     reject(error);
   };
   const handleError = (error) => settleError(error);
+  const handleLimitExceeded = () => settleError(new Error('Mail webhook payload is too large.'));
   const handleRequestData = (chunk) => {
     totalBytes += chunk.length;
     if (totalBytes > maxBytes) {
@@ -143,38 +138,23 @@ const streamMultipartForm = (req, maxBytes) => new Promise((resolve, reject) => 
     }
   };
   const handleRequestAborted = () => settleError(new Error('Mail webhook request was aborted.'));
-  const handlePart = (part) => {
-    let fieldName = null;
-    let shouldCollect = false;
-    let partHeaders = {};
-    const chunks = [];
+  const handleFile = (_, file) => file.resume();
+  const handleField = (fieldName, value, info) => {
+    if (!trackedMultipartFieldNames.has(fieldName)) {
+      return;
+    }
+    if (info && info.valueTruncated) {
+      settleError(new Error('Mail webhook payload is too large.'));
+      return;
+    }
 
-    part.on('header', (headers) => {
-      partHeaders = headers;
-      const contentDisposition = getFirstHeaderValue(headers['content-disposition']);
-      fieldName = getMultipartFieldName(contentDisposition);
-      shouldCollect = Boolean(fieldName)
-        && trackedMultipartFieldNames.has(fieldName)
-        && !isMultipartFilePart(contentDisposition);
-
-      if (!shouldCollect) {
-        part.resume();
-      }
-    });
-    part.on('data', (chunk) => {
-      if (shouldCollect) {
-        chunks.push(chunk);
-      }
-    });
-    part.on('error', handleError);
-    part.on('end', () => {
-      if (shouldCollect && fieldName) {
-        formParts[fieldName] = {
-          headers: partHeaders,
-          data: Buffer.concat(chunks),
-        };
-      }
-    });
+    const transferEncoding = (info && info.encoding) ? info.encoding.toLowerCase() : '';
+    formParts[fieldName] = {
+      headers: {
+        'content-transfer-encoding': [transferEncoding],
+      },
+      data: Buffer.from(value, 'utf8'),
+    };
   };
   const handleFinish = () => {
     if (isSettled) {
@@ -191,7 +171,11 @@ const streamMultipartForm = (req, maxBytes) => new Promise((resolve, reject) => 
   req.on('error', handleError);
   parser.on('error', handleError);
   parser.on('finish', handleFinish);
-  parser.on('part', handlePart);
+  parser.on('field', handleField);
+  parser.on('file', handleFile);
+  parser.on('fieldsLimit', handleLimitExceeded);
+  parser.on('filesLimit', handleLimitExceeded);
+  parser.on('partsLimit', handleLimitExceeded);
   req.pipe(parser);
 });
 const decodeAndConvertMailPart = ({

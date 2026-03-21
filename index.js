@@ -6,7 +6,6 @@ const session = require('express-session');
 const bodyParser = require('body-parser');
 const debug = require('debug')('index');
 const Dicer = require('dicer');
-const { Iconv } = require('iconv');
 const helmet = require('helmet');
 const emailAddresses = require('email-addresses');
 const htmlToText = require('html-to-text');
@@ -14,6 +13,11 @@ const {
   getPartTransferEncoding,
   decodeTransferEncodedBuffer,
 } = require('./lib/transfer-encoding');
+const {
+  decodeUtf8Buffer,
+  convertUtf8,
+  truncateLineTextMessage,
+} = require('./lib/mail-text');
 
 const LINELogin = require('line-login');
 const LINEMsgSdk = require ('@line/bot-sdk');
@@ -70,7 +74,6 @@ const lineTextMessageMaxChars = 5000;
 const lineTextMessageTruncationMarker = '\r\n（省略）';
 const trackedMultipartFieldNames = new Set(['to', 'from', 'subject', 'charsets', 'text', 'html']);
 const utf8MultipartFieldNames = new Set(['to', 'from', 'subject', 'charsets']);
-const isUtf8Charset = (charset) => !charset || /^(utf-?8|us-ascii|ascii)$/i.test(charset);
 const getMultipartBoundary = (contentType) => {
   const matched = contentType.match(/boundary=(?:"([^"]+)"|([^;]+))/i);
   if (!matched) {
@@ -180,15 +183,6 @@ const streamMultipartForm = (req, maxBytes) => new Promise((resolve, reject) => 
   parser.on('part', handlePart);
   req.pipe(parser);
 });
-const decodeUtf8Buffer = (valueBuffer) => valueBuffer.toString('utf8');
-const convertUtf8 = (valueBuffer, charset) => {
-  if (isUtf8Charset(charset)) {
-    return decodeUtf8Buffer(valueBuffer);
-  }
-
-  const cnv = new Iconv(charset, 'UTF-8//TRANSLIT//IGNORE');
-  return cnv.convert(valueBuffer).toString('utf8');
-};
 const decodeAndConvertMailPart = ({
   part,
   charset,
@@ -224,16 +218,6 @@ const decodeAndConvertMailPart = ({
     });
     return decodeUtf8Buffer(decodedBuffer);
   }
-};
-const truncateLineTextMessage = (message) => {
-  const messageChars = Array.from(message);
-  if (messageChars.length <= lineTextMessageMaxChars) {
-    return message;
-  }
-
-  const markerChars = Array.from(lineTextMessageTruncationMarker);
-  const truncatedLength = Math.max(lineTextMessageMaxChars - markerChars.length, 0);
-  return `${messageChars.slice(0, truncatedLength).join('')}${lineTextMessageTruncationMarker}`;
 };
 class AppError extends Error {
   constructor(code, message, httpStatus = 500, details = undefined) {
@@ -459,7 +443,10 @@ app
         });
         mailContent.body = htmlToText.convert(htmlBody);
       }
-      const msgBody = truncateLineTextMessage(`From: ${mailContent.from}\r\nSubject: ${mailContent.subject}\r\n\r\n${mailContent.body}`);
+      const msgBody = truncateLineTextMessage(`From: ${mailContent.from}\r\nSubject: ${mailContent.subject}\r\n\r\n${mailContent.body}`, {
+        maxChars: lineTextMessageMaxChars,
+        marker: lineTextMessageTruncationMarker,
+      });
       await retryAsync({
         operation: () => msgbot.pushMessage({
           to: recipient.line_recipient_id,

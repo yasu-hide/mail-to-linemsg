@@ -189,6 +189,42 @@ const convertUtf8 = (valueBuffer, charset) => {
   const cnv = new Iconv(charset, 'UTF-8//TRANSLIT//IGNORE');
   return cnv.convert(valueBuffer).toString('utf8');
 };
+const decodeAndConvertMailPart = ({
+  part,
+  charset,
+  partName,
+  requestId,
+}) => {
+  const transferEncoding = getPartTransferEncoding(part.headers);
+  let decodedBuffer = part.data;
+
+  if (transferEncoding) {
+    try {
+      decodedBuffer = decodeTransferEncodedBuffer(part.data, transferEncoding);
+    } catch (error) {
+      logWarn('mail_webhook.transfer_decode_failed', {
+        requestId,
+        partName,
+        transferEncoding,
+        message: error && error.message,
+      });
+      decodedBuffer = part.data;
+    }
+  }
+
+  try {
+    return convertUtf8(decodedBuffer, charset);
+  } catch (error) {
+    logWarn('mail_webhook.charset_convert_failed', {
+      requestId,
+      partName,
+      charset,
+      transferEncoding,
+      message: error && error.message,
+    });
+    return decodeUtf8Buffer(decodedBuffer);
+  }
+};
 const truncateLineTextMessage = (message) => {
   const messageChars = Array.from(message);
   if (messageChars.length <= lineTextMessageMaxChars) {
@@ -407,16 +443,20 @@ app
         'body': ''
       };
       if (formParts.text && formParts.text.data) {
-        const textPart = formParts.text;
-        const textTransferEncoding = getPartTransferEncoding(textPart.headers);
-        const decodedTextBuffer = decodeTransferEncodedBuffer(textPart.data, textTransferEncoding);
-        mailContent.body = convertUtf8(decodedTextBuffer, mailCharsets.text);
+        mailContent.body = decodeAndConvertMailPart({
+          part: formParts.text,
+          charset: mailCharsets.text,
+          partName: 'text',
+          requestId: req.requestId,
+        });
       }
       else if (formParts.html && formParts.html.data) {
-        const htmlPart = formParts.html;
-        const htmlTransferEncoding = getPartTransferEncoding(htmlPart.headers);
-        const decodedHtmlBuffer = decodeTransferEncodedBuffer(htmlPart.data, htmlTransferEncoding);
-        const htmlBody = convertUtf8(decodedHtmlBuffer, mailCharsets.html);
+        const htmlBody = decodeAndConvertMailPart({
+          part: formParts.html,
+          charset: mailCharsets.html,
+          partName: 'html',
+          requestId: req.requestId,
+        });
         mailContent.body = htmlToText.convert(htmlBody);
       }
       const msgBody = truncateLineTextMessage(`From: ${mailContent.from}\r\nSubject: ${mailContent.subject}\r\n\r\n${mailContent.body}`);

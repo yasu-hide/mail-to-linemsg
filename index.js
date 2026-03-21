@@ -24,7 +24,6 @@ const {
   regenerateSessionWithUser,
 } = require('./lib/session-security');
 
-const LINELogin = require('line-login');
 const LINEMsgSdk = require ('@line/bot-sdk');
 const MQTTPublish = require('./mqtt-publish');
 const Database = require('./db-pgsql');
@@ -43,11 +42,11 @@ const sessionOptions = {
   saveUninitialized: false,
 };
 const listenPort = process.env.PORT || 3000;
-const login = new LINELogin({
-  channel_id: process.env.LINECORP_PLATFORM_LOGIN_CHANNEL_ID,
-  channel_secret: process.env.LINECORP_PLATFORM_LOGIN_CHANNEL_SECRET,
-  callback_url: process.env.LINECORP_PLATFORM_LOGIN_CHANNEL_CALLBACKURL,
-});
+const lineLoginConfig = {
+  channelId: process.env.LINECORP_PLATFORM_LOGIN_CHANNEL_ID,
+  channelSecret: process.env.LINECORP_PLATFORM_LOGIN_CHANNEL_SECRET,
+  callbackUrl: process.env.LINECORP_PLATFORM_LOGIN_CHANNEL_CALLBACKURL,
+};
 const msgbotConfig = {
   channelAccessToken: process.env.LINECORP_PLATFORM_MESSAGING_CHANNEL_ACCESSTOKEN,
   channelSecret: process.env.LINECORP_PLATFORM_MESSAGING_CHANNEL_SECRET,
@@ -326,6 +325,57 @@ const retryAsync = async ({
   }
 };
 
+const buildLineAuthUrl = (req) => {
+  const state = randomUUID().replace(/-/g, '');
+  const nonce = randomUUID().replace(/-/g, '');
+  req.session.line_login_state = state;
+  req.session.line_login_nonce = nonce;
+
+  const params = new URLSearchParams({
+    response_type: 'code',
+    client_id: lineLoginConfig.channelId,
+    redirect_uri: lineLoginConfig.callbackUrl,
+    state,
+    scope: 'profile openid',
+    nonce,
+  });
+  return `https://access.line.me/oauth2/v2.1/authorize?${params.toString()}`;
+};
+
+const postUrlEncodedJson = async (url, payload) => {
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/x-www-form-urlencoded',
+    },
+    body: new URLSearchParams(payload),
+  });
+  const json = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(json.error_description || json.error || `LINE API request failed: ${response.status}`);
+  }
+  return json;
+};
+
+const issueLineAccessToken = async (code) => postUrlEncodedJson(
+  'https://api.line.me/oauth2/v2.1/token',
+  {
+    grant_type: 'authorization_code',
+    code,
+    redirect_uri: lineLoginConfig.callbackUrl,
+    client_id: lineLoginConfig.channelId,
+    client_secret: lineLoginConfig.channelSecret,
+  },
+);
+
+const verifyLineIdToken = async (idToken) => postUrlEncodedJson(
+  'https://api.line.me/oauth2/v2.1/verify',
+  {
+    id_token: idToken,
+    client_id: lineLoginConfig.channelId,
+  },
+);
+
 const app = express();
 if (app.get('env') === 'production') {
   app.set('trust proxy', 1);
@@ -576,34 +626,58 @@ app
     req.session.destroy();
     return res.redirect(`${req.baseUrl}/login?reason=logged_out`);
   })
-  .get('/auth', login.auth())
-  .get('/callback', login.callback(
-    async (req, res, _, tokenResponse) => {
-      if (tokenResponse.expires_in > 0 && tokenResponse.id_token) {
-        const lineUserId = tokenResponse.id_token.sub;
-        const user = await db.addUser(lineUserId);
-        const userId = user.ext_user_id;
-        const lineUserProfile = await msgbot.getProfile(lineUserId)
-          .catch(() => Promise.resolve({ displayName: 'self' }));
-        await db.addRecipient(lineUserId, 0, lineUserProfile.displayName.substring(0, 63), userId);
-        await regenerateSessionWithUser(req, userId);
-        logInfo('auth.callback.succeeded', {
-          requestId: req.requestId,
-          lineUserId,
-          userId,
-        });
-        return res.redirect(`${req.baseUrl}/`);
+  .get('/auth', (req, res) => {
+    if (!lineLoginConfig.channelId || !lineLoginConfig.channelSecret || !lineLoginConfig.callbackUrl) {
+      logError('auth.config.invalid', {
+        requestId: req.requestId,
+        message: 'LINE login configuration is incomplete.',
+      });
+      return res.status(500).json({ msg: 'LINE login configuration is invalid.' });
+    }
+    return res.redirect(buildLineAuthUrl(req));
+  })
+  .get('/callback', async (req, res) => {
+    try {
+      const code = typeof req.query.code === 'string' ? req.query.code : '';
+      const state = typeof req.query.state === 'string' ? req.query.state : '';
+      if (!code || !state || req.session.line_login_state !== state) {
+        throw new Error('Authorization failed. State does not match.');
       }
-      return res.status(401).json({ msg: 'Auth failed.' });
-    }, (req, res, _, error) => {
+
+      const tokenResponse = await issueLineAccessToken(code);
+      if (!(tokenResponse.expires_in > 0) || !tokenResponse.id_token) {
+        throw new Error('Auth failed. Token response is invalid.');
+      }
+
+      const verifiedIdToken = await verifyLineIdToken(tokenResponse.id_token);
+      if (!verifiedIdToken.sub || verifiedIdToken.nonce !== req.session.line_login_nonce) {
+        throw new Error('Verification of id token failed.');
+      }
+
+      const lineUserId = verifiedIdToken.sub;
+      const user = await db.addUser(lineUserId);
+      const userId = user.ext_user_id;
+      const lineUserProfile = await msgbot.getProfile(lineUserId)
+        .catch(() => Promise.resolve({ displayName: 'self' }));
+      await db.addRecipient(lineUserId, 0, lineUserProfile.displayName.substring(0, 63), userId);
+      await regenerateSessionWithUser(req, userId);
+      delete req.session.line_login_state;
+      delete req.session.line_login_nonce;
+      logInfo('auth.callback.succeeded', {
+        requestId: req.requestId,
+        lineUserId,
+        userId,
+      });
+      return res.redirect(`${req.baseUrl}/`);
+    } catch (error) {
       logWarn('auth.callback.failed', {
         requestId: req.requestId,
         message: error && error.message,
       });
       req.session.destroy();
       return res.redirect(`${req.baseUrl}/login?reason=login_failed`);
-    },
-  ))
+    }
+  })
   .get('/api/user', async (req, res, next) => {
     try {
       const extUserId = await requireAuthenticatedUser(req);

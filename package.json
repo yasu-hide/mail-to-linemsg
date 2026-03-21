@@ -13,7 +13,7 @@
   },
   "scripts": {
     "start": "node index.js",
-    "test": "node test/decode-transfer-encoding.test.js && node test/mail-text.test.js && node test/e2e-mail-samples.test.js && node test/csrf-protection.test.js"
+    "test": "node test/decode-transfer-encoding.test.js && node test/mail-text.test.js && node test/e2e-mail-samples.test.js && node test/csrf-protection.test.js && node test/session-security.test.js"
   },
   "engines": {
     "node": ">=20 <25"

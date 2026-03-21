@@ -37,7 +37,7 @@ const sessionOptions = {
     maxAge: 600000,
     httpOnly: true,
     sameSite: 'lax',
-    secure: false,
+    secure: process.env.NODE_ENV === 'production',
   },
   resave: false,
   saveUninitialized: false,
@@ -329,7 +329,6 @@ const retryAsync = async ({
 const app = express();
 if (app.get('env') === 'production') {
   app.set('trust proxy', 1);
-  sessionOptions.cookie.secure = true;
 }
 if (app.get('env') === 'production' && !process.env.SESSION_STORE) {
   logWarn('session.store.default_memory', {

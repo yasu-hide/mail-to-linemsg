@@ -3,14 +3,6 @@
   "version": "0.0.1",
   "main": "index.js",
   "description": "Notify for mail to LINE Messaging API",
-  "nodemonConfig": {
-    "ignore": [
-      "main.js"
-    ],
-    "watch": [
-      "index.js"
-    ]
-  },
   "scripts": {
     "start": "node index.js"
   },
@@ -20,6 +12,7 @@
     "body-parser": "^1.20.3",
     "crypto": "^1.0.1",
     "debug": "^4.3.4",
+    "dicer": "^0.2.5",
     "dotenv": "^8.6.0",
     "ejs": "^3.1.10",
     "email-addresses": "^5.0.0",

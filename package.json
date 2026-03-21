@@ -40,7 +40,6 @@
     "multer": "^2.0.2",
     "pg-promise": "^11.13.0",
     "querystring": "^0.2.1",
-    "request": "^2.88.0",
     "secure-compare": "^3.0.1"
   },
   "devDependencies": {

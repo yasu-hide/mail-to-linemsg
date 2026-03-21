@@ -90,6 +90,10 @@ const getFirstHeaderValue = (headerValue) => {
 
   return headerValue[0];
 };
+const getPartTransferEncoding = (partHeaders) => {
+  const transferEncoding = getFirstHeaderValue(partHeaders && partHeaders['content-transfer-encoding']);
+  return transferEncoding ? transferEncoding.trim().toLowerCase() : '';
+};
 const isMultipartFilePart = (contentDisposition) => /filename=/i.test(contentDisposition || '');
 const streamMultipartForm = (req, maxBytes) => new Promise((resolve, reject) => {
   const boundary = getMultipartBoundary(req.headers['content-type'] || '');
@@ -184,6 +188,29 @@ const convertUtf8 = (valueBuffer, charset) => {
 
   const cnv = new Iconv(charset, 'UTF-8//TRANSLIT//IGNORE');
   return cnv.convert(valueBuffer).toString('utf8');
+};
+const decodeQuotedPrintableBuffer = (valueBuffer) => {
+  const qpText = valueBuffer.toString('latin1');
+  const softBreakRemoved = qpText.replace(/=\r?\n/g, '');
+  const binaryText = softBreakRemoved.replace(/=([0-9A-Fa-f]{2})/g, (_, hex) => (
+    String.fromCharCode(parseInt(hex, 16))
+  ));
+  return Buffer.from(binaryText, 'latin1');
+};
+const decodeTransferEncodedBuffer = (valueBuffer, transferEncoding) => {
+  if (!transferEncoding) {
+    return valueBuffer;
+  }
+
+  if (transferEncoding === 'base64') {
+    const compacted = valueBuffer.toString('ascii').replace(/[\r\n\s]/g, '');
+    return Buffer.from(compacted, 'base64');
+  }
+  if (transferEncoding === 'quoted-printable') {
+    return decodeQuotedPrintableBuffer(valueBuffer);
+  }
+
+  return valueBuffer;
 };
 const truncateLineTextMessage = (message) => {
   const messageChars = Array.from(message);
@@ -403,10 +430,16 @@ app
         'body': ''
       };
       if (formParts.text && formParts.text.data) {
-        mailContent.body = convertUtf8(formParts.text.data, mailCharsets.text);
+        const textPart = formParts.text;
+        const textTransferEncoding = getPartTransferEncoding(textPart.headers);
+        const decodedTextBuffer = decodeTransferEncodedBuffer(textPart.data, textTransferEncoding);
+        mailContent.body = convertUtf8(decodedTextBuffer, mailCharsets.text);
       }
       else if (formParts.html && formParts.html.data) {
-        const htmlBody = convertUtf8(formParts.html.data, mailCharsets.html);
+        const htmlPart = formParts.html;
+        const htmlTransferEncoding = getPartTransferEncoding(htmlPart.headers);
+        const decodedHtmlBuffer = decodeTransferEncodedBuffer(htmlPart.data, htmlTransferEncoding);
+        const htmlBody = convertUtf8(decodedHtmlBuffer, mailCharsets.html);
         mailContent.body = htmlToText.convert(htmlBody);
       }
       const msgBody = truncateLineTextMessage(`From: ${mailContent.from}\r\nSubject: ${mailContent.subject}\r\n\r\n${mailContent.body}`);

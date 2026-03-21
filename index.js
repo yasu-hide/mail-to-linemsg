@@ -14,8 +14,8 @@ const {
   decodeTransferEncodedBuffer,
 } = require('./lib/transfer-encoding');
 const {
+  isUtf8Charset,
   decodeUtf8Buffer,
-  convertUtf8,
   truncateLineTextMessage,
 } = require('./lib/mail-text');
 
@@ -185,7 +185,7 @@ const streamMultipartForm = (req, maxBytes) => new Promise((resolve, reject) => 
 });
 const decodeAndConvertMailPart = ({
   part,
-  charset,
+  charsetHint,
   partName,
   requestId,
 }) => {
@@ -206,18 +206,15 @@ const decodeAndConvertMailPart = ({
     }
   }
 
-  try {
-    return convertUtf8(decodedBuffer, charset);
-  } catch (error) {
-    logWarn('mail_webhook.charset_convert_failed', {
+  if (charsetHint && !isUtf8Charset(charsetHint)) {
+    logInfo('mail_webhook.charset_hint_ignored', {
       requestId,
       partName,
-      charset,
-      transferEncoding,
-      message: error && error.message,
+      charsetHint,
     });
-    return decodeUtf8Buffer(decodedBuffer);
   }
+
+  return decodeUtf8Buffer(decodedBuffer);
 };
 class AppError extends Error {
   constructor(code, message, httpStatus = 500, details = undefined) {
@@ -405,7 +402,11 @@ app
       try {
         mailCharsets = JSON.parse(form.charsets || '{}');
       } catch (error) {
-        throw new AppError('INVALID_CHARSETS_PAYLOAD', 'Invalid charsets payload.', 400);
+        logWarn('mail_webhook.invalid_charsets_ignored', {
+          requestId: req.requestId,
+          message: error && error.message,
+        });
+        mailCharsets = {};
       }
       const mailTo = emailAddresses.parseAddressList((form.to || '').replace(/, *$/,''));
       if (!mailTo || mailTo.length <= 0) {
@@ -429,7 +430,7 @@ app
       if (formParts.text && formParts.text.data) {
         mailContent.body = decodeAndConvertMailPart({
           part: formParts.text,
-          charset: mailCharsets.text,
+          charsetHint: mailCharsets.text,
           partName: 'text',
           requestId: req.requestId,
         });
@@ -437,7 +438,7 @@ app
       else if (formParts.html && formParts.html.data) {
         const htmlBody = decodeAndConvertMailPart({
           part: formParts.html,
-          charset: mailCharsets.html,
+          charsetHint: mailCharsets.html,
           partName: 'html',
           requestId: req.requestId,
         });

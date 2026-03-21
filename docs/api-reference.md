@@ -58,9 +58,10 @@ SendGrid Inbound Parse Webhook を受ける。
 - 複数宛先があっても先頭アドレスだけを見る
 - 宛先の local part を addr_master.addr_mail として検索する
 - multipart/form-data をストリームで解析し、添付ファイルは保持せず読み捨てる
-- text と html の part だけ raw bytes として収集し、charsets の JSON を使って UTF-8 へ変換する
+- text と html の part だけ raw bytes として収集し、`content-transfer-encoding`（base64 / quoted-printable）を先にデコードしてから、charsets の JSON を使って UTF-8 へ変換する
 - from と subject は SendGrid が UTF-8 へ正規化した値をそのまま使う
 - text があれば UTF-8 化してそのまま使い、なければ html を UTF-8 化してから html-to-text で平文化する
+- transfer-encoding デコードや charset 変換に失敗した場合は警告ログを出し、可能な範囲で UTF-8 デコードへフォールバックする
 
 #### LINE 送信フォーマット
 

@@ -140,7 +140,7 @@ sequenceDiagram
 3. To ヘッダー先頭アドレスのローカルパートを取り出す
 4. addr_master から有効な recipient を 1 件引く
 5. from と subject は SendGrid が正規化した UTF-8 値をそのまま使う
-6. 添付ファイルは保持せず読み捨て、text か html の raw bytes だけを charsets に従って UTF-8 へ変換する
+6. 添付ファイルは保持せず読み捨て、text か html の raw bytes だけを収集し、transfer-encoding をデコードしてから charsets に従って UTF-8 へ変換する
 7. html のみなら UTF-8 化した後で text 化して使う
 8. LINE Messaging API へ pushMessage する
 9. MQTT 設定があれば件名を publish する
@@ -175,6 +175,7 @@ sequenceDiagram
 
 - /mail-webhook は処理完了後に 200 を返し、既知エラーは共通エラーフォーマットで返す
 - /mail-webhook は添付をメモリ保持しないが、text または html 本文は UTF-8 変換のために保持する
+- transfer-encoding / charset 変換で失敗した場合は warning ログを残し、本文復旧のため UTF-8 デコードへフォールバックする
 - LINE 送信メッセージは 1 本の text message に集約される
 - LINE 送信メッセージが 5000 文字を超える場合は、`（省略）` を付けて切り詰める
 - MQTT payload は data キーを持つ単純な JSON

@@ -217,6 +217,9 @@ const normalizeAppError = (error) => {
   if (message === 'Mail webhook request was aborted.') {
     return new AppError('MAIL_REQUEST_ABORTED', message, 400);
   }
+  if (message === 'Invalid charsets payload.') {
+    return new AppError('INVALID_CHARSETS_PAYLOAD', message, 400);
+  }
 
   return new AppError('INTERNAL_ERROR', 'Internal server error.', 500);
 };
@@ -305,12 +308,12 @@ app
       const mailTo = emailAddresses.parseAddressList((form.to || '').replace(/, *$/,''));
       if (!mailTo || mailTo.length <= 0) {
         debug('Invalid To address.');
-        return res.sendStatus(202);
+        throw new AppError('INVALID_TO_ADDRESS', 'Invalid To address.', 400);
       }
       const recipient = await db.getEnabledRecipientByEmail(`${mailTo[0].local}`);
       if (!recipient) {
         debug('Unknown recipient.');
-        return res.sendStatus(202);
+        throw new AppError('UNKNOWN_RECIPIENT', 'Unknown recipient.', 404);
       }
 
       const mailContent = {
@@ -333,13 +336,11 @@ app
         const lineRequestId = err && err.headers && typeof err.headers.get === 'function'
           ? err.headers.get('x-line-request-id')
           : undefined;
-        console.error(err && (err.statusCode || err.status || err.message || err));
-        if (lineRequestId) {
-          console.error(lineRequestId);
-        }
-        if (err && err.body) {
-          console.error(err.body);
-        }
+        throw new AppError('LINE_PUSH_FAILED', 'Failed to push message to LINE.', 502, {
+          statusCode: err && (err.statusCode || err.status),
+          lineRequestId,
+          body: err && err.body,
+        });
       });
       if (mqttPublish !== null) {
         mqttPublish.publish(mailContent.subject)

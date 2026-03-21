@@ -55,7 +55,8 @@
       "axios": "1.13.5"
     },
     "eslint": {
-      "ajv": "6.14.0"
+      "ajv": "6.14.0",
+      "js-yaml": "3.14.2"
     },
     "filelist": {
       "minimatch": "5.1.8"

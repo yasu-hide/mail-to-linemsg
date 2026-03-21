@@ -1,5 +1,70 @@
 (async () => {
-    const availableRecipient = await fetch("/api/recipient").then(apiAvailableRecipient => apiAvailableRecipient.json()).then(apiAvailableRecipientJSON => apiAvailableRecipientJSON.result);
+    const errorCodeMessages = {
+        AUTH_FAILED: 'ログイン状態を確認して。',
+        EMAIL_REQUIRED: 'メールアドレスを入力して。',
+        EMAIL_INVALID: 'メールアドレスの形式が不正。',
+        EMAIL_TOO_SHORT: 'メールアドレスが短すぎる。',
+        EMAIL_ALREADY_EXISTS: 'そのメールアドレスはもう登録されてる。',
+        RECIPIENT_REQUIRED: '送信先を選んで。',
+        RECIPIENT_NOT_FOUND: '送信先が見つからない。',
+        RECIPIENT_UNAVAILABLE: 'その送信先は今使えない。',
+        ADDRESS_NOT_FOUND: '対象のアドレスが見つからない。',
+        ADDRESS_NOT_OWNED: 'そのアドレスは削除できない。'
+    };
+
+    const getErrorBanner = (() => {
+        let banner = document.getElementById('error-banner');
+        if (banner) {
+            return banner;
+        }
+
+        banner = document.createElement('div');
+        banner.id = 'error-banner';
+        banner.className = 'alert alert-danger';
+        banner.style.display = 'none';
+        banner.setAttribute('role', 'alert');
+        const rootDOM = document.getElementById('container-root');
+        rootDOM.parentNode.insertBefore(banner, rootDOM);
+        return banner;
+    });
+
+    const showError = ((message) => {
+        const banner = getErrorBanner();
+        banner.textContent = message;
+        banner.style.display = '';
+    });
+
+    const clearError = (() => {
+        const banner = document.getElementById('error-banner');
+        if (!banner) {
+            return;
+        }
+
+        banner.textContent = '';
+        banner.style.display = 'none';
+    });
+
+    const readApiResponse = (async (res) => {
+        let payload = {};
+        try {
+            payload = await res.json();
+        } catch (error) {
+            payload = {};
+        }
+
+        if (res.ok) {
+            clearError();
+            return payload;
+        }
+
+        const errorCode = payload && payload.error && payload.error.code;
+        const message = errorCodeMessages[errorCode] || payload.msg || 'エラーが発生した。';
+        showError(message);
+        throw new Error(message);
+    });
+
+    const availableRecipientPayload = await fetch("/api/recipient").then(readApiResponse);
+    const availableRecipient = availableRecipientPayload.result || [];
 
     const appendCol = ((...elem) => {
         const colDiv = document.createElement('div');
@@ -51,8 +116,12 @@
                     'Content-Type': 'application/json'
                 }
             });
-            if(res.status == 200)
+            if(res.status == 200) {
+                clearError();
                 rootDOM.removeChild(document.getElementById(`rowDiv-${extAddrId}`));
+            } else {
+                await readApiResponse(res).catch(() => undefined);
+            }
         });
         return elem;
     });
@@ -67,13 +136,13 @@
             const rootDOM = document.getElementById("container-root");
             const formInputEmailNew = document.getElementById('formInputEmailNew').value;
             if(!formInputEmailNew) {
-                console.log('e-mail address is empty.');
+                showError('メールアドレスを入力して。');
                 return;
             }
 
             const formInputRecipientNew = document.getElementById('formInputRecipientNew').value;
             if(! availableRecipient.find(rcpt => rcpt.ext_recipient_id === formInputRecipientNew)) {
-                console.log('available recipient not found.');
+                showError('送信先を選んで。');
                 return;
             }
 
@@ -89,7 +158,7 @@
                 })
             });
             if(res.status === 200) {
-                const addrOne = await res.json().then(apiAddrJSON => apiAddrJSON.result);
+                const addrOne = await readApiResponse(res).then(apiAddrJSON => apiAddrJSON.result);
                 const rowDiv = document.createElement('div');
                 rowDiv.className = 'row';
                 rowDiv.id = `rowDiv-${addrOne.ext_addr_id}`
@@ -99,8 +168,7 @@
                 rootDOM.appendChild(rowDiv);
                 document.getElementById('formInputEmailNew').value = '';
             } else {
-                const eMsg = await res.json().then(apiAddrJSON => apiAddrJSON.msg);
-                console.error(eMsg)
+                await readApiResponse(res).catch((error) => console.error(error.message));
             }
         });
         return elem;

@@ -194,6 +194,45 @@ const truncateLineTextMessage = (message) => {
   const truncatedLength = Math.max(lineTextMessageMaxChars - markerChars.length, 0);
   return `${messageChars.slice(0, truncatedLength).join('')}${lineTextMessageTruncationMarker}`;
 };
+class AppError extends Error {
+  constructor(code, message, httpStatus = 500, details = undefined) {
+    super(message);
+    this.code = code;
+    this.httpStatus = httpStatus;
+    this.details = details;
+  }
+}
+const normalizeAppError = (error) => {
+  if (error instanceof AppError) {
+    return error;
+  }
+
+  const message = error && error.message;
+  if (message === 'Multipart boundary is missing.') {
+    return new AppError('INVALID_MULTIPART_REQUEST', message, 400);
+  }
+  if (message === 'Mail webhook payload is too large.') {
+    return new AppError('MAIL_PAYLOAD_TOO_LARGE', message, 413);
+  }
+  if (message === 'Mail webhook request was aborted.') {
+    return new AppError('MAIL_REQUEST_ABORTED', message, 400);
+  }
+  if (message === 'Invalid charsets payload.') {
+    return new AppError('INVALID_CHARSETS_PAYLOAD', message, 400);
+  }
+
+  return new AppError('INTERNAL_ERROR', 'Internal server error.', 500);
+};
+const createApiErrorResponse = (appError) => ({
+  success: false,
+  msg: appError.message,
+  error: {
+    code: appError.code,
+    message: appError.message,
+    details: appError.details,
+  },
+});
+const isApiLikeRequest = (req) => req.path.startsWith('/api/') || req.path.includes('webhook');
 
 const app = express();
 if (app.get('env') === 'production') {
@@ -212,6 +251,15 @@ const isLoggedIn = async (extUserId) => {
   }
   debug('isLoggedIn:' + extUserId + ':' + existUser.ext_user_id);
   return (extUserId === existUser.ext_user_id);
+};
+const requireAuthenticatedUser = async (req) => {
+  const extUserId = req.session.userId;
+  if (!await isLoggedIn(extUserId)) {
+    req.session.destroy();
+    throw new AppError('AUTH_FAILED', 'Auth failed.', 401);
+  }
+
+  return extUserId;
 };
 const getAvailableRecipient = async (extUserId) => {
   const user = await db.getUserByExtUserId(extUserId);
@@ -251,16 +299,21 @@ app
         ...acc,
         ...(utf8MultipartFieldNames.has(key) ? { [key]: decodeUtf8Buffer(formParts[key].data) } : {}),
       }), {});
-      const mailCharsets = JSON.parse(form.charsets || '{}');
+      let mailCharsets = {};
+      try {
+        mailCharsets = JSON.parse(form.charsets || '{}');
+      } catch (error) {
+        throw new AppError('INVALID_CHARSETS_PAYLOAD', 'Invalid charsets payload.', 400);
+      }
       const mailTo = emailAddresses.parseAddressList((form.to || '').replace(/, *$/,''));
       if (!mailTo || mailTo.length <= 0) {
         debug('Invalid To address.');
-        return res.sendStatus(202);
+        throw new AppError('INVALID_TO_ADDRESS', 'Invalid To address.', 400);
       }
       const recipient = await db.getEnabledRecipientByEmail(`${mailTo[0].local}`);
       if (!recipient) {
         debug('Unknown recipient.');
-        return res.sendStatus(202);
+        throw new AppError('UNKNOWN_RECIPIENT', 'Unknown recipient.', 404);
       }
 
       const mailContent = {
@@ -283,13 +336,11 @@ app
         const lineRequestId = err && err.headers && typeof err.headers.get === 'function'
           ? err.headers.get('x-line-request-id')
           : undefined;
-        console.error(err && (err.statusCode || err.status || err.message || err));
-        if (lineRequestId) {
-          console.error(lineRequestId);
-        }
-        if (err && err.body) {
-          console.error(err.body);
-        }
+        throw new AppError('LINE_PUSH_FAILED', 'Failed to push message to LINE.', 502, {
+          statusCode: err && (err.statusCode || err.status),
+          lineRequestId,
+          body: err && err.body,
+        });
       });
       if (mqttPublish !== null) {
         mqttPublish.publish(mailContent.subject)
@@ -352,14 +403,10 @@ app
   ))
   .get('/api/user', async (req, res, next) => {
     try {
-      const extUserId = req.session.userId;
-      if (! await isLoggedIn(extUserId)) {
-        req.session.destroy();
-        return res.status(401).json({msg: "Auth failed." });
-      }
+      const extUserId = await requireAuthenticatedUser(req);
       const user = await db.getUserByExtUserId(extUserId);
       if (!user) {
-        return res.status(400).json({ msg: 'user is not found.' });
+        throw new AppError('USER_NOT_FOUND', 'user is not found.', 404);
       }
       res.status(200).json({
         msg: 'Success',
@@ -371,11 +418,7 @@ app
   })
   .get('/api/recipient', async (req, res, next) => {
     try {
-      const extUserId = req.session.userId;
-      if (! await isLoggedIn(extUserId)) {
-        req.session.destroy();
-        return res.status(401).json({msg: "Auth failed." });
-      }
+      const extUserId = await requireAuthenticatedUser(req);
       const availableRecipient = await getAvailableRecipient(extUserId);
       res.status(200).json({
         msg: 'Success',
@@ -387,11 +430,7 @@ app
   })
   .get('/api/addr', async (req, res, next) => {
     try {
-      const extUserId = req.session.userId;
-      if (! await isLoggedIn(extUserId)) {
-        req.session.destroy();
-        return res.status(401).json({ msg: "Auth failed." });
-      }
+      const extUserId = await requireAuthenticatedUser(req);
       const registeredAddr = await db.getRegisteredAddrByExtUserId(extUserId);
       res.status(200).json({
         msg: 'Success',
@@ -403,18 +442,14 @@ app
   })
   .post('/api/addr', async (req, res, next) => {
     try {
-      const extUserId = req.session.userId;
-      if (! await isLoggedIn(extUserId)) {
-        req.session.destroy();
-        return res.status(401).json({ msg: "Auth failed." });
-      }
+      const extUserId = await requireAuthenticatedUser(req);
       const inputEmail = req.body.formInputEmail;
       const inputRecipient = req.body.formInputRecipient;
       if(!inputEmail) {
-        return res.status(400).json({ msg: 'Email address is empty.' });
+        throw new AppError('EMAIL_REQUIRED', 'Email address is empty.', 400);
       }
       if(!inputRecipient) {
-        return res.status(400).json({ msg: 'Recipient is empty.' });
+        throw new AppError('RECIPIENT_REQUIRED', 'Recipient is empty.', 400);
       }
       let emailAddr = inputEmail;
       if (inputEmail.indexOf('@') === -1) {
@@ -422,24 +457,24 @@ app
       }
       const emailObj = emailAddresses.parseOneAddress(emailAddr);
       if(!emailObj || !emailObj.local) {
-        return res.status(400).json({ msg: 'Email address is invalid format.' });
+        throw new AppError('EMAIL_INVALID', 'Email address is invalid format.', 400);
       }
       if(emailObj.local.length < 4) {
-        return res.status(400).json({ msg: 'Email address is too short.' });
+        throw new AppError('EMAIL_TOO_SHORT', 'Email address is too short.', 400);
       }
       emailAddr = emailObj.local.toLowerCase();
       if(await db.getAddrByEmail(emailAddr)) {
-        return res.status(400).json({ msg: 'Email address is already exists.' });
+        throw new AppError('EMAIL_ALREADY_EXISTS', 'Email address is already exists.', 400);
       }
 
       const availableRecipient = await getAvailableRecipient(extUserId);
       const extRecipient = availableRecipient.find(rcpt => rcpt.ext_recipient_id === inputRecipient);
       if(!extRecipient) {
-        return res.status(400).json({ msg: 'Recipient is not found.' });
+        throw new AppError('RECIPIENT_NOT_FOUND', 'Recipient is not found.', 400);
       }
       const extRecipientId = extRecipient.ext_recipient_id;
       if(!extRecipientId) {
-        return res.status(400).json({ msg: 'Recipient ' + extRecipientId + ' is not available.' });
+        throw new AppError('RECIPIENT_UNAVAILABLE', 'Recipient ' + extRecipientId + ' is not available.', 400);
       }
       await db.addAddr(emailAddr, extUserId, extRecipientId);
       const addr = await db.getAddrByEmail(emailAddr);
@@ -454,24 +489,45 @@ app
   .delete('/api/addr/:extAddrId', async (req, res, next) => {
     try {
       const extAddrId = req.params.extAddrId;
-      const extUserId = req.session.userId;
-      if (! await isLoggedIn(extUserId)) {
-        req.session.destroy();
-        return res.status(401).json({ msg: "Auth failed." });
-      }
+      const extUserId = await requireAuthenticatedUser(req);
       const addr = await db.getAddrByExtAddrId(extAddrId);
+      if (!addr) {
+        throw new AppError('ADDRESS_NOT_FOUND', 'Address is not found.', 404);
+      }
       const registeredAddr = await db.getRegisteredAddrByExtUserId(extUserId);
       const deleteCandidate = registeredAddr.some((registeredAddrObj) => (
         addr.addr_id === registeredAddrObj.addr_id
         && addr.ext_addr_id === registeredAddrObj.ext_addr_id
       ));
       if (!deleteCandidate) {
-        return res.status(204).json({ msg: 'No content', result: [] });
+        throw new AppError('ADDRESS_NOT_OWNED', 'Address is not registered by this user.', 404, {
+          extAddrId,
+        });
       }
       await db.delAddr(extAddrId);
       res.status(200).json({ msg: 'Success', result: [ extAddrId ]});
     } catch (e) {
       next(e);
     }
+  })
+  .use((err, req, res, next) => {
+    const appError = normalizeAppError(err);
+    debug('Unhandled error: %o', {
+      path: req.path,
+      code: appError.code,
+      httpStatus: appError.httpStatus,
+      message: err && err.message,
+      stack: err && err.stack,
+    });
+
+    if (res.headersSent) {
+      return next(err);
+    }
+
+    if (isApiLikeRequest(req)) {
+      return res.status(appError.httpStatus).json(createApiErrorResponse(appError));
+    }
+
+    return res.status(appError.httpStatus).send(appError.message);
   })
   .listen(listenPort, () => debug(`Listening on ${listenPort}`));

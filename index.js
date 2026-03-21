@@ -461,7 +461,10 @@ app
       }
       const addr = await db.getAddrByExtAddrId(extAddrId);
       const registeredAddr = await db.getRegisteredAddrByExtUserId(extUserId);
-      const deleteCandidate = registeredAddr.filter(registeredAddrObj => { (addr.addr_id === registeredAddrObj.addr_id) && (addr.ext_addr_id === registeredAddrObj.ext_addr_id) });
+      const deleteCandidate = registeredAddr.some((registeredAddrObj) => (
+        addr.addr_id === registeredAddrObj.addr_id
+        && addr.ext_addr_id === registeredAddrObj.ext_addr_id
+      ));
       if (!deleteCandidate) {
         return res.status(204).json({ msg: 'No content', result: [] });
       }

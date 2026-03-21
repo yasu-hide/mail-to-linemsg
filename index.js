@@ -194,6 +194,42 @@ const truncateLineTextMessage = (message) => {
   const truncatedLength = Math.max(lineTextMessageMaxChars - markerChars.length, 0);
   return `${messageChars.slice(0, truncatedLength).join('')}${lineTextMessageTruncationMarker}`;
 };
+class AppError extends Error {
+  constructor(code, message, httpStatus = 500, details = undefined) {
+    super(message);
+    this.code = code;
+    this.httpStatus = httpStatus;
+    this.details = details;
+  }
+}
+const normalizeAppError = (error) => {
+  if (error instanceof AppError) {
+    return error;
+  }
+
+  const message = error && error.message;
+  if (message === 'Multipart boundary is missing.') {
+    return new AppError('INVALID_MULTIPART_REQUEST', message, 400);
+  }
+  if (message === 'Mail webhook payload is too large.') {
+    return new AppError('MAIL_PAYLOAD_TOO_LARGE', message, 413);
+  }
+  if (message === 'Mail webhook request was aborted.') {
+    return new AppError('MAIL_REQUEST_ABORTED', message, 400);
+  }
+
+  return new AppError('INTERNAL_ERROR', 'Internal server error.', 500);
+};
+const createApiErrorResponse = (appError) => ({
+  success: false,
+  msg: appError.message,
+  error: {
+    code: appError.code,
+    message: appError.message,
+    details: appError.details,
+  },
+});
+const isApiLikeRequest = (req) => req.path.startsWith('/api/') || req.path.includes('webhook');
 
 const app = express();
 if (app.get('env') === 'production') {
@@ -473,5 +509,25 @@ app
     } catch (e) {
       next(e);
     }
+  })
+  .use((err, req, res, next) => {
+    const appError = normalizeAppError(err);
+    debug('Unhandled error: %o', {
+      path: req.path,
+      code: appError.code,
+      httpStatus: appError.httpStatus,
+      message: err && err.message,
+      stack: err && err.stack,
+    });
+
+    if (res.headersSent) {
+      return next(err);
+    }
+
+    if (isApiLikeRequest(req)) {
+      return res.status(appError.httpStatus).json(createApiErrorResponse(appError));
+    }
+
+    return res.status(appError.httpStatus).send(appError.message);
   })
   .listen(listenPort, () => debug(`Listening on ${listenPort}`));

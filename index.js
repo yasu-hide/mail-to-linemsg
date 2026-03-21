@@ -421,7 +421,7 @@ app
         emailAddr = `${inputEmail}@local`;
       }
       const emailObj = emailAddresses.parseOneAddress(emailAddr);
-      if(!emailAddr) {
+      if(!emailObj || !emailObj.local) {
         return res.status(400).json({ msg: 'Email address is invalid format.' });
       }
       if(emailObj.local.length < 4) {

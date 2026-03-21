@@ -213,6 +213,15 @@ const createLogEntry = (level, event, details = {}) => JSON.stringify({
 const logInfo = (event, details) => debug(createLogEntry('info', event, details));
 const logWarn = (event, details) => debug(createLogEntry('warn', event, details));
 const logError = (event, details) => debug(createLogEntry('error', event, details));
+const getRequestCompletionLogger = (statusCode) => {
+  if (statusCode >= 500) {
+    return logError;
+  }
+  if (statusCode >= 400) {
+    return logWarn;
+  }
+  return logInfo;
+};
 const normalizeAppError = (error) => {
   if (error instanceof AppError) {
     return error;
@@ -323,11 +332,21 @@ const getAvailableRecipient = async (extUserId) => {
 app
   .use((req, res, next) => {
     req.requestId = createRequestId();
+    req.requestStartedAt = Date.now();
     res.setHeader('x-request-id', req.requestId);
     logInfo('request.started', {
       requestId: req.requestId,
       method: req.method,
       path: req.path,
+    });
+    res.on('finish', () => {
+      getRequestCompletionLogger(res.statusCode)('request.completed', {
+        requestId: req.requestId,
+        method: req.method,
+        path: req.path,
+        statusCode: res.statusCode,
+        durationMs: Date.now() - req.requestStartedAt,
+      });
     });
     next();
   })
@@ -417,6 +436,10 @@ app
           body: err && err.body,
         });
       });
+      logInfo('line.push.succeeded', {
+        requestId: req.requestId,
+        recipientId: recipient.line_recipient_id,
+      });
       if (mqttPublish !== null) {
         retryAsync({
           operation: () => mqttPublish.publish(mailContent.subject),
@@ -431,6 +454,11 @@ app
               message: error && error.message,
             });
           },
+        }).then(() => {
+          logInfo('mqtt.publish.succeeded', {
+            requestId: req.requestId,
+            topic: mqttPublish.topic,
+          });
         }).catch((error) => {
           logError('mqtt.publish.failed', {
             requestId: req.requestId,
@@ -484,6 +512,11 @@ app
           .catch(() => Promise.resolve({ displayName: 'self' }));
         await db.addRecipient(lineUserId, 0, lineUserProfile.displayName.substring(0, 63), userId);
         req.session.userId = userId;
+        logInfo('auth.callback.succeeded', {
+          requestId: req.requestId,
+          lineUserId,
+          userId,
+        });
         return res.redirect(`${req.baseUrl}/`);
       }
       return res.status(401).json({ msg: 'Auth failed.' });

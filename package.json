@@ -32,7 +32,7 @@
     "email-addresses": "^5.0.0",
     "express": "^4.22.1",
     "express-session": "^1.18.2",
-    "helmet": "^4.6.0",
+    "helmet": "^8.1.0",
     "html-to-text": "^9.0.5",
     "iconv": "^3.0.1",
     "mqtt": "^5.15.1",

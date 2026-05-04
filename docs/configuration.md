@@ -56,20 +56,26 @@
 
 ## 起動方法
 
-### ローカル起動
+### ローカル起動（Docker）
 
 ```bash
-npm install
-node index.js
+docker build -t mail-to-linemsg:local .
+docker run --rm -p 3000:3000 --env-file .env mail-to-linemsg:local
 ```
 
-### package.json の script
+通常のローカル起動・検証は Docker コンテナ内で行う。
+
+### ローカル直接実行（補助）
+
+Docker を使わずに手元で直接実行する場合も、npm / yarn は使わず、mise で固定した pnpm を使う。
 
 ```bash
-npm start
+eval "$(~/.local/bin/mise activate bash)"
+pnpm install --frozen-lockfile
+pnpm start
 ```
 
-実体は node index.js。
+`mise.toml` で Node.js と pnpm のバージョンを固定する。
 
 ## ミドルウェア構成
 
@@ -106,10 +112,18 @@ npm start
 
 ### Dockerfile
 
-- base image: node:latest
+- base image: node:20-bookworm-slim
 - /app にソースを配置
-- npm install 実行
+- @pnpm/exe で pnpm 11.0.4 を導入して pnpm install 実行
 - EXPOSE 3000
+
+### テスト用 Docker stage
+
+```bash
+docker build --target test -t mail-to-linemsg:test .
+```
+
+テスト用 stage では devDependencies を含めて依存を入れ、`pnpm test` を実行する。
 
 ### Dockerfile.nodemon
 
@@ -138,11 +152,11 @@ web: node index.js
 
 ## 手動検証
 
-ローカル起動後、主要なエラーハンドリングを手で確認するときの最小手順。
+Docker でローカル起動後、主要なエラーハンドリングを手で確認するときの最小手順。
 
 ### 事前準備
 
-1. 必須環境変数を設定して `node index.js` で起動する
+1. 必須環境変数を `.env` に設定して Docker コンテナを起動する
 2. API の確認にはログイン済みブラウザのセッションを使うか、同じセッションの Cookie を用意する
 3. エラーレスポンスでは `x-request-id` ヘッダが返ることを確認する
 

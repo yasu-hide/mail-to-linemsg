@@ -1,0 +1,31 @@
+app = "__FLY_APP__"
+kill_signal = "SIGINT"
+kill_timeout = "5s"
+primary_region = "__FLY_PRIMARY_REGION__"
+
+[build]
+dockerfile = "Dockerfile"
+
+[env]
+LINECORP_PLATFORM_LOGIN_CHANNEL_CALLBACKURL = "__LINE_LOGIN_CALLBACK_URL__"
+NODE_ENV = "production"
+
+[experimental]
+auto_rollback = true
+
+  [experimental.attached]
+  secrets = { }
+
+[http_service]
+auto_start_machines = true
+auto_stop_machines = true
+force_https = true
+internal_port = 3_000
+min_machines_running = 0
+processes = [ "app" ]
+
+[processes]
+app = "node /app/index.js"
+
+[[vm]]
+size = "shared-cpu-1x"

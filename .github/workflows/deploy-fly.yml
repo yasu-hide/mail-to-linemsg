@@ -1,0 +1,78 @@
+name: Deploy to Fly.io
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-fly-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Validate required configuration
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          FLY_APP: ${{ vars.FLY_APP }}
+          FLY_PRIMARY_REGION: ${{ vars.FLY_PRIMARY_REGION }}
+          LINE_LOGIN_CALLBACK_URL: ${{ vars.LINE_LOGIN_CALLBACK_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "${FLY_API_TOKEN:-}" ]; then
+            echo "Missing required secret: FLY_API_TOKEN" >&2
+            exit 1
+          fi
+
+          for key in FLY_APP FLY_PRIMARY_REGION LINE_LOGIN_CALLBACK_URL; do
+            if [ -z "${!key:-}" ]; then
+              echo "Missing required variable: ${key}" >&2
+              exit 1
+            fi
+          done
+
+      - name: Render fly.toml from template
+        env:
+          FLY_APP: ${{ vars.FLY_APP }}
+          FLY_PRIMARY_REGION: ${{ vars.FLY_PRIMARY_REGION }}
+          LINE_LOGIN_CALLBACK_URL: ${{ vars.LINE_LOGIN_CALLBACK_URL }}
+        run: |
+          set -euo pipefail
+
+          cp .github/deploy-fly/fly.template.toml .fly.generated.toml
+
+          sed -i "s|__FLY_APP__|${FLY_APP}|g" .fly.generated.toml
+          sed -i "s|__FLY_PRIMARY_REGION__|${FLY_PRIMARY_REGION}|g" .fly.generated.toml
+          sed -i "s|__LINE_LOGIN_CALLBACK_URL__|${LINE_LOGIN_CALLBACK_URL}|g" .fly.generated.toml
+
+      - name: Deploy
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          FLY_APP: ${{ vars.FLY_APP }}
+          NO_COLOR: "1"
+        run: |
+          set -euo pipefail
+          flyctl deploy \
+            --local-only \
+            --debug \
+            --verbose \
+            --config .fly.generated.toml \
+            --app "$FLY_APP"
+
+      - name: Clean up generated config
+        if: ${{ always() }}
+        run: rm -f .fly.generated.toml

@@ -9,6 +9,7 @@ const bodyParser = require('body-parser');
 const debug = require('debug')('index');
 const Busboy = require('busboy');
 const helmet = require('helmet');
+const { rateLimit } = require('express-rate-limit');
 const emailAddresses = require('email-addresses');
 const htmlToText = require('html-to-text');
 const {
@@ -88,6 +89,8 @@ const helmetOption = {
 };
 
 const mailWebhookMaxBytes = 30 * 1024 * 1024;
+const mailWebhookRateLimitWindowMs = 60 * 1000;
+const mailWebhookRateLimitLimit = 300;
 const lineTextMessageMaxChars = 5000;
 const lineTextMessageTruncationMarker = '\r\n（省略）';
 const trackedMultipartFieldNames = new Set(['to', 'from', 'subject', 'charsets', 'text', 'html']);
@@ -231,6 +234,17 @@ class AppError extends Error {
     this.details = details;
   }
 }
+const mailWebhookRateLimiter = rateLimit({
+  windowMs: mailWebhookRateLimitWindowMs,
+  limit: mailWebhookRateLimitLimit,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  handler: (req, res, next) => next(new AppError(
+    'WEBHOOK_RATE_LIMIT_EXCEEDED',
+    'Webhook rate limit exceeded.',
+    429,
+  )),
+});
 const createRequestId = () => randomUUID();
 const createLogEntry = (level, event, details = {}) => JSON.stringify({
   level,
@@ -481,7 +495,7 @@ app
       next(e);
     }
   })
-  .post('/mail-webhook', async (req, res, next) => {
+  .post('/mail-webhook', mailWebhookRateLimiter, async (req, res, next) => {
     try {
       const {
         formParts,

@@ -118,6 +118,7 @@ MQTT が有効なら、件名から次の payload を作って publish する。
 - 正常処理完了時は 200 OK
 - 主な失敗時は次を返す
   - 401: 署名ヘッダ欠落、署名不一致、timestamp 不正または期限切れ
+  - 429: rate limit 超過
   - 400: multipart boundary 不正、payload 超過、request abort、charsets JSON 不正、To アドレス不正
   - 404: 宛先未登録
   - 503: 署名検証用の公開鍵設定不備

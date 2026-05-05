@@ -26,6 +26,10 @@ const {
 const {
   isOwnedAddress,
 } = require('./lib/address-ownership');
+const {
+  InboundParseWebhookSignatureError,
+  verifyInboundParseWebhookSignature,
+} = require('./lib/inbound-parse-webhook-signature');
 
 const LINEMsgSdk = require ('@line/bot-sdk');
 const MQTTPublish = require('./mqtt-publish');
@@ -106,6 +110,7 @@ const streamMultipartForm = (req, maxBytes) => new Promise((resolve, reject) => 
     },
   });
   const formParts = {};
+  const rawChunks = [];
   let totalBytes = 0;
   let isSettled = false;
 
@@ -135,6 +140,7 @@ const streamMultipartForm = (req, maxBytes) => new Promise((resolve, reject) => 
   const handleError = (error) => settleError(error);
   const handleLimitExceeded = () => settleError(new Error('Mail webhook payload is too large.'));
   const handleRequestData = (chunk) => {
+    rawChunks.push(chunk);
     totalBytes += chunk.length;
     if (totalBytes > maxBytes) {
       settleError(new Error('Mail webhook payload is too large.'));
@@ -166,7 +172,10 @@ const streamMultipartForm = (req, maxBytes) => new Promise((resolve, reject) => 
 
     isSettled = true;
     cleanup();
-    resolve(formParts);
+    resolve({
+      formParts,
+      rawBody: Buffer.concat(rawChunks, totalBytes),
+    });
   };
 
   req.on('data', handleRequestData);
@@ -248,6 +257,10 @@ const normalizeAppError = (error) => {
 
   if (error === invalidCsrfTokenError || (error && error.code === 'EBADCSRFTOKEN')) {
     return new AppError('CSRF_TOKEN_INVALID', 'Invalid CSRF token.', 403);
+  }
+
+  if (error instanceof InboundParseWebhookSignatureError) {
+    return new AppError(error.code, error.message, error.httpStatus);
   }
 
   const message = error && error.message;
@@ -470,7 +483,14 @@ app
   })
   .post('/mail-webhook', async (req, res, next) => {
     try {
-      const formParts = await streamMultipartForm(req, mailWebhookMaxBytes);
+      const {
+        formParts,
+        rawBody,
+      } = await streamMultipartForm(req, mailWebhookMaxBytes);
+      verifyInboundParseWebhookSignature({
+        headers: req.headers,
+        rawBody,
+      });
       const form = Object.keys(formParts).reduce((acc, key) => ({
         ...acc,
         ...(utf8MultipartFieldNames.has(key) ? { [key]: decodeUtf8Buffer(formParts[key].data) } : {}),

@@ -63,6 +63,31 @@ const createHelpers = ({
   };
 };
 
+const createSessionOptions = ({
+  sessionOptions,
+  allowInsecureSessionCookie,
+}) => {
+  const secureSessionOptions = {
+    ...sessionOptions,
+    cookie: {
+      ...(sessionOptions.cookie || {}),
+      secure: true,
+    },
+  };
+
+  if (!allowInsecureSessionCookie) {
+    return secureSessionOptions;
+  }
+
+  return {
+    ...secureSessionOptions,
+    cookie: {
+      ...secureSessionOptions.cookie,
+      secure: Boolean(sessionOptions.cookie && sessionOptions.cookie.secure),
+    },
+  };
+};
+
 const createApp = ({
   rootDir,
   config,
@@ -74,7 +99,10 @@ const createApp = ({
 }) => {
   const app = express();
   const isProduction = app.get('env') === 'production';
-  const sessionOptions = config.sessionOptions;
+  const sessionOptions = createSessionOptions({
+    sessionOptions: config.sessionOptions,
+    allowInsecureSessionCookie: config.allowInsecureSessionCookie,
+  });
   const csrf = doubleCsrf({
     getSecret: () => process.env.CSRF_SECRET || sessionOptions.secret,
     getSessionIdentifier: (req) => req.sessionID || '',
@@ -130,11 +158,13 @@ const createApp = ({
       helpers,
       logger,
       createRequestId: logger.createRequestId,
+      authRateLimit: config.authRateLimit,
     }))
     .use(createApiRoutes({
       db,
       helpers,
       csrf,
+      apiRateLimit: config.apiRateLimit,
     }))
     .use(createErrorMiddleware({
       invalidCsrfTokenError: csrf.invalidCsrfTokenError,
@@ -146,4 +176,5 @@ const createApp = ({
 module.exports = {
   createApp,
   createHelpers,
+  createSessionOptions,
 };

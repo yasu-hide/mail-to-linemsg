@@ -1,18 +1,30 @@
 const express = require('express');
 const emailAddresses = require('email-addresses');
+const { rateLimit } = require('express-rate-limit');
 const { AppError } = require('../lib/errors');
 const {
   isOwnedAddress,
 } = require('../lib/address-ownership');
+const {
+  createRateLimitOptions,
+  defaultRateLimits,
+} = require('../lib/rate-limit');
 
 const createApiRoutes = ({
   db,
   helpers,
   csrf,
+  apiRateLimit,
 }) => {
   const router = express.Router();
+  const apiRateLimiter = rateLimit(createRateLimitOptions({
+    options: apiRateLimit,
+    defaults: defaultRateLimits.api,
+    code: 'API_RATE_LIMIT_EXCEEDED',
+    message: 'API rate limit exceeded.',
+  }));
 
-  router.get('/api/user', async (req, res, next) => {
+  router.get('/api/user', apiRateLimiter, async (req, res, next) => {
     try {
       const extUserId = await helpers.requireAuthenticatedUser(req);
       const user = await db.getUserByExtUserId(extUserId);
@@ -28,7 +40,7 @@ const createApiRoutes = ({
     }
   });
 
-  router.get('/api/recipient', async (req, res, next) => {
+  router.get('/api/recipient', apiRateLimiter, async (req, res, next) => {
     try {
       const extUserId = await helpers.requireAuthenticatedUser(req);
       const availableRecipient = await helpers.getAvailableRecipient(extUserId);
@@ -41,7 +53,7 @@ const createApiRoutes = ({
     }
   });
 
-  router.get('/api/addr', async (req, res, next) => {
+  router.get('/api/addr', apiRateLimiter, async (req, res, next) => {
     try {
       const extUserId = await helpers.requireAuthenticatedUser(req);
       const registeredAddr = await db.getRegisteredAddrByExtUserId(extUserId);
@@ -54,7 +66,7 @@ const createApiRoutes = ({
     }
   });
 
-  router.get('/api/csrf-token', async (req, res, next) => {
+  router.get('/api/csrf-token', apiRateLimiter, async (req, res, next) => {
     try {
       await helpers.requireAuthenticatedUser(req);
       res.status(200).json({
@@ -68,7 +80,7 @@ const createApiRoutes = ({
     }
   });
 
-  router.post('/api/addr', csrf.doubleCsrfProtection, async (req, res, next) => {
+  router.post('/api/addr', apiRateLimiter, csrf.doubleCsrfProtection, async (req, res, next) => {
     try {
       const extUserId = await helpers.requireAuthenticatedUser(req);
       const inputEmail = req.body.formInputEmail;
@@ -115,7 +127,7 @@ const createApiRoutes = ({
     }
   });
 
-  router.delete('/api/addr/:extAddrId', csrf.doubleCsrfProtection, async (req, res, next) => {
+  router.delete('/api/addr/:extAddrId', apiRateLimiter, csrf.doubleCsrfProtection, async (req, res, next) => {
     try {
       const extAddrId = req.params.extAddrId;
       const extUserId = await helpers.requireAuthenticatedUser(req);

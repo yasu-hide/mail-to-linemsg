@@ -1,24 +1,17 @@
 const express = require('express');
 const { rateLimit } = require('express-rate-limit');
-const { AppError } = require('../lib/errors');
 const { createMailWebhookHandler } = require('../lib/mail-webhook');
+const {
+  createRateLimitOptions,
+  defaultRateLimits,
+} = require('../lib/rate-limit');
 
-const defaultMailWebhookRateLimit = {
-  windowMs: 60 * 1000,
-  limit: 300,
-};
-
-const createMailWebhookRateLimiter = (options = {}) => rateLimit({
-  windowMs: options.windowMs || defaultMailWebhookRateLimit.windowMs,
-  limit: options.limit || defaultMailWebhookRateLimit.limit,
-  standardHeaders: 'draft-8',
-  legacyHeaders: false,
-  handler: (req, res, next) => next(new AppError(
-    'WEBHOOK_RATE_LIMIT_EXCEEDED',
-    'Webhook rate limit exceeded.',
-    429,
-  )),
-});
+const createMailWebhookRateLimiter = (options = {}) => rateLimit(createRateLimitOptions({
+  options,
+  defaults: defaultRateLimits.mailWebhook,
+  code: 'WEBHOOK_RATE_LIMIT_EXCEEDED',
+  message: 'Webhook rate limit exceeded.',
+}));
 
 const createWebhookRoutes = ({
   db,

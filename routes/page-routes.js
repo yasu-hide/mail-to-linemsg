@@ -1,8 +1,13 @@
 const express = require('express');
 const path = require('path');
+const { rateLimit } = require('express-rate-limit');
 const {
   regenerateSessionWithUser,
 } = require('../lib/session-security');
+const {
+  createRateLimitOptions,
+  defaultRateLimits,
+} = require('../lib/rate-limit');
 
 const buildLineAuthUrl = (req, lineLoginConfig, createRequestId) => {
   const state = createRequestId().replace(/-/g, '');
@@ -63,12 +68,19 @@ const createPageRoutes = ({
   helpers,
   logger,
   createRequestId,
+  authRateLimit,
 }) => {
   const router = express.Router();
   const indexTemplate = path.join(rootDir, 'pages/index');
   const loginTemplate = path.join(rootDir, 'pages/login');
+  const authRateLimiter = rateLimit(createRateLimitOptions({
+    options: authRateLimit,
+    defaults: defaultRateLimits.auth,
+    code: 'AUTH_RATE_LIMIT_EXCEEDED',
+    message: 'Auth rate limit exceeded.',
+  }));
 
-  router.get('/', async (req, res) => {
+  router.get('/', async (req, res, next) => {
     const extUserId = req.session.userId;
     logger.logInfo('page.index.render', { requestId: req.requestId, extUserId });
     if (! await helpers.isLoggedIn(extUserId)) {
@@ -78,8 +90,8 @@ const createPageRoutes = ({
     try {
       const pageParam = await db.getRegisteredAddrByExtUserId(extUserId);
       res.render(indexTemplate, { param: pageParam });
-    } catch (msg) {
-      res.status(500).send(msg);
+    } catch (error) {
+      next(error);
     }
   });
 
@@ -96,7 +108,7 @@ const createPageRoutes = ({
     return res.redirect(`${req.baseUrl}/login?reason=logged_out`);
   });
 
-  router.get('/auth', (req, res) => {
+  router.get('/auth', authRateLimiter, (req, res) => {
     if (!lineLoginConfig.channelId || !lineLoginConfig.channelSecret || !lineLoginConfig.callbackUrl) {
       logger.logError('auth.config.invalid', {
         requestId: req.requestId,
@@ -107,7 +119,7 @@ const createPageRoutes = ({
     return res.redirect(buildLineAuthUrl(req, lineLoginConfig, createRequestId));
   });
 
-  router.get('/callback', async (req, res) => {
+  router.get('/callback', authRateLimiter, async (req, res) => {
     try {
       const code = typeof req.query.code === 'string' ? req.query.code : '';
       const state = typeof req.query.state === 'string' ? req.query.state : '';

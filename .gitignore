@@ -7,3 +7,5 @@ npm-debug.log
 docker-compose.yml
 fly.toml
 .local/
+inbound-parse-webhook-private.pem
+inbound-parse-webhook-public.pem

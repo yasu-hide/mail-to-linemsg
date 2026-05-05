@@ -58,7 +58,7 @@ INBOUND_PARSE_WEBHOOK_PUBLIC_KEY="-----BEGIN PUBLIC KEY-----\n...\n-----END PUBL
 INBOUND_PARSE_WEBHOOK_PRIVATE_KEY="-----BEGIN EC PRIVATE KEY-----\n...\n-----END EC PRIVATE KEY-----\n"
 ```
 
-PEM ファイルは `.gitignore` の除外対象ではない。鍵ファイルはリポジトリ外で作成するか、設定登録後に安全な場所へ移し、公開鍵・秘密鍵の PEM ファイルと秘密鍵を含む `.env` はコミットしない。
+例示した PEM ファイル名は `.gitignore` の除外対象。鍵ファイルはリポジトリ外で作成するか、設定登録後に安全な場所へ移し、公開鍵・秘密鍵の PEM ファイルと秘密鍵を含む `.env` はコミットしない。
 
 ## 任意環境変数
 

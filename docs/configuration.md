@@ -21,6 +21,45 @@
 
 - DATABASE_URL
 
+### Inbound Parse Webhook
+
+- INBOUND_PARSE_WEBHOOK_PUBLIC_KEY
+
+受信側のこのアプリには公開鍵を設定する。送信側には対応する秘密鍵を設定する。
+
+- 受信側: `INBOUND_PARSE_WEBHOOK_PUBLIC_KEY`
+- 送信側: `INBOUND_PARSE_WEBHOOK_PRIVATE_KEY`
+
+鍵ペアは ECDSA prime256v1 で作成する。
+
+```bash
+openssl genpkey \
+  -algorithm EC \
+  -pkeyopt ec_paramgen_curve:prime256v1 \
+  -out inbound-parse-webhook-private.pem
+
+openssl pkey \
+  -in inbound-parse-webhook-private.pem \
+  -pubout \
+  -out inbound-parse-webhook-public.pem
+```
+
+上記は鍵そのものではなく生成手順なので、公開ドキュメントに記載してよい。
+
+このアプリの `.env` には公開鍵を設定する。PEM をそのまま複数行で扱えない環境では、改行を `\n` に置き換えた1行文字列として設定する。
+
+```bash
+INBOUND_PARSE_WEBHOOK_PUBLIC_KEY="-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----\n"
+```
+
+送信側の `.env` には秘密鍵を設定する。
+
+```bash
+INBOUND_PARSE_WEBHOOK_PRIVATE_KEY="-----BEGIN EC PRIVATE KEY-----\n...\n-----END EC PRIVATE KEY-----\n"
+```
+
+例示した PEM ファイル名は `.gitignore` の除外対象。鍵ファイルはリポジトリ外で作成するか、設定登録後に安全な場所へ移し、公開鍵・秘密鍵の PEM ファイルと秘密鍵を含む `.env` はコミットしない。
+
 ## 任意環境変数
 
 ### セッション
@@ -140,9 +179,10 @@ web: node index.js
 1. PostgreSQL を用意する
 2. [dbtable-pgsql.sql](../dbtable-pgsql.sql) を適用する
 3. LINE Login と LINE Messaging API のチャネル情報を設定する
-4. SendGrid Inbound Parse Webhook の POST 先を /mail-webhook に向ける
-5. LINE Messaging API の Webhook を /msg-webhook に向ける
-6. 必要なら MQTT を設定する
+4. Inbound Parse Webhook の公開鍵を `INBOUND_PARSE_WEBHOOK_PUBLIC_KEY` に設定する
+5. SendGrid Inbound Parse Webhook の POST 先を /mail-webhook に向ける
+6. LINE Messaging API の Webhook を /msg-webhook に向ける
+7. 必要なら MQTT を設定する
 
 ## Webhook 設定先
 

@@ -14,13 +14,14 @@
   },
   "scripts": {
     "start": "node index.js",
-    "test": "node test/decode-transfer-encoding.test.js && node test/mail-text.test.js && node test/e2e-mail-samples.test.js && node test/csrf-protection.test.js && node test/session-security.test.js && node test/address-ownership.test.js"
+    "test": "node test/decode-transfer-encoding.test.js && node test/mail-text.test.js && node test/e2e-mail-samples.test.js && node test/csrf-protection.test.js && node test/session-security.test.js && node test/address-ownership.test.js && node test/inbound-parse-webhook-signature.test.js && node test/mail-webhook-rate-limit.test.js"
   },
   "engines": {
     "node": ">=20 <25"
   },
   "dependencies": {
     "@line/bot-sdk": "^11.0.0",
+    "@sendgrid/eventwebhook": "^8.0.0",
     "async-mqtt": "^2.6.1",
     "body-parser": "^2.2.2",
     "cookie-parser": "^1.4.7",
@@ -32,6 +33,7 @@
     "ejs": "^5.0.2",
     "email-addresses": "^5.0.0",
     "express": "^5.2.1",
+    "express-rate-limit": "^8.4.1",
     "express-session": "^1.18.2",
     "helmet": "^8.1.0",
     "html-to-text": "^9.0.5",

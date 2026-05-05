@@ -65,6 +65,13 @@ SendGrid Inbound Parse Webhook を受ける。
 
 - multipart/form-data
 
+#### 署名ヘッダ
+
+- `X-Email-Event-Webhook-Signature`
+- `X-Email-Event-Webhook-Timestamp`
+- 互換ヘッダとして `X-Twilio-Email-Event-Webhook-Signature` と `X-Twilio-Email-Event-Webhook-Timestamp` も受け付ける
+- 両方ある場合は `X-Email-Event-Webhook-*` を優先する
+
 #### 主な入力項目
 
 - to
@@ -110,8 +117,11 @@ MQTT が有効なら、件名から次の payload を作って publish する。
 
 - 正常処理完了時は 200 OK
 - 主な失敗時は次を返す
+  - 401: 署名ヘッダ欠落、署名不一致、timestamp 不正または期限切れ
+  - 429: rate limit 超過
   - 400: multipart boundary 不正、payload 超過、request abort、charsets JSON 不正、To アドレス不正
   - 404: 宛先未登録
+  - 503: 署名検証用の公開鍵設定不備
   - 502: LINE Messaging API push 失敗
 - API/webhook 系のエラー応答には `x-request-id` ヘッダと `requestId` フィールドが含まれる
 

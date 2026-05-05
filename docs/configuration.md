@@ -30,11 +30,18 @@
 - 受信側: `INBOUND_PARSE_WEBHOOK_PUBLIC_KEY`
 - 送信側: `INBOUND_PARSE_WEBHOOK_PRIVATE_KEY`
 
-鍵ペアは ECDSA secp256k1 で作成する。
+鍵ペアは ECDSA prime256v1 で作成する。
 
 ```bash
-openssl ecparam -name secp256k1 -genkey -noout -out inbound-parse-webhook-private-key.pem
-openssl ec -in inbound-parse-webhook-private-key.pem -pubout -out inbound-parse-webhook-public-key.pem
+openssl genpkey \
+  -algorithm EC \
+  -pkeyopt ec_paramgen_curve:prime256v1 \
+  -out inbound-parse-webhook-private.pem
+
+openssl pkey \
+  -in inbound-parse-webhook-private.pem \
+  -pubout \
+  -out inbound-parse-webhook-public.pem
 ```
 
 このアプリの `.env` には公開鍵を設定する。PEM をそのまま複数行で扱えない環境では、改行を `\n` に置き換えた1行文字列として設定する。

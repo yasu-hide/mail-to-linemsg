@@ -15,7 +15,23 @@
 
 ### index.js
 
-アプリ本体。Express の初期化、セッション管理、各ルート定義、LINE/MQTT/DB 連携を担当する。
+アプリの起動入口。環境変数の読み込み、LINE/MQTT/DB クライアントの生成、`createApp` の呼び出し、HTTP listen を担当する。
+
+### app/create-app.js
+
+Express アプリ本体を組み立てる。セッション、Cookie、Helmet、Webhook、静的ファイル、body parser、画面/API ルート、共通エラーハンドラの順序を固定する。
+
+### routes/
+
+HTTP ルート定義を責務ごとに分ける。
+
+- `webhook-routes.js`: LINE Messaging API Webhook と SendGrid Inbound Parse Webhook
+- `page-routes.js`: ログイン、ログアウト、LINE Login callback、画面表示
+- `api-routes.js`: ログイン済みユーザー向け REST API
+
+### lib/mail-webhook.js
+
+SendGrid Inbound Parse Webhook の multipart 解析、本文復元、LINE メッセージ本文生成、LINE push、MQTT publish を担当する。
 
 ### db-pgsql.js
 

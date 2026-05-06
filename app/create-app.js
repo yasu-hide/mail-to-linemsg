@@ -12,23 +12,25 @@ const { createWebhookRoutes } = require('../routes/webhook-routes');
 const { createPageRoutes } = require('../routes/page-routes');
 const { createApiRoutes } = require('../routes/api-routes');
 
+const createSafeLogId = (value) => logger.createLogCorrelationId(value);
+
 const createHelpers = ({
   db,
   msgbot,
 }) => {
   const isLoggedIn = async (extUserId) => {
     if(!extUserId) {
-      logger.logInfo('isLoggedIn', { extUserId });
+      logger.logInfo('isLoggedIn', { extUserKey: createSafeLogId(extUserId) });
       return false;
     }
     const existUser = await db.getUserByExtUserId(extUserId);
     if(!existUser) {
-      logger.logInfo('isLoggedIn:userNotFound', { extUserId });
+      logger.logInfo('isLoggedIn:userNotFound', { extUserKey: createSafeLogId(extUserId) });
       return false;
     }
     logger.logInfo('isLoggedIn:userFound', {
-      extUserId,
-      existingExtUserId: existUser.ext_user_id,
+      extUserKey: createSafeLogId(extUserId),
+      existingExtUserKey: createSafeLogId(existUser.ext_user_id),
     });
     return (extUserId === existUser.ext_user_id);
   };

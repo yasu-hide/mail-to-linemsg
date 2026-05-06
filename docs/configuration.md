@@ -307,15 +307,32 @@ curl -i \
 
 期待値:
 
-- 400
-- JSON に `error.code: INVALID_CHARSETS_PAYLOAD`
+- 200
+- `mail_webhook.invalid_charsets_ignored` の warning ログ
+- 可能な範囲で UTF-8 として本文を復元し、LINE 通知を継続する
 
 ### ログの検証
 
-標準出力の debug ログで次を確認する。
+標準出力・標準エラーの JSON ログで次を確認する。`info` は標準出力、`warn` / `error` は標準エラーへ出力される。
 
 - `request.started`
 - `request.completed`
+- `mail_webhook.received`
+- `mail_webhook.signature.verified`
+- `mail_webhook.recipient.resolved`
+- `mail_webhook.body.selected`
+- `mail_webhook.message.prepared`
+- `line.push.started`
+- LINE push 成功時は `line.push.succeeded`
 - LINE push の一時障害時は `line.push.retry`
+- LINE push の最終失敗時は `line.push.failed`
 - MQTT publish の一時障害時は `mqtt.publish.retry`
 - 失敗時は `request.failed`
+
+#### ログを使った切り分け
+
+- メールが届いたか確認する: `requestId` で `request.started`、`mail_webhook.received`、`mail_webhook.signature.verified` の順に出ているかを見る
+- 宛先解決を確認する: `mail_webhook.recipient.resolved` が出ているかを見る。宛先や LINE ID の全文は出さず、短い相関キーだけを出す
+- LINE 通知を確認する: `line.push.started` の後に `line.push.succeeded` または `line.push.failed` が出ているかを見る
+- 文字化けを確認する: `mail_webhook.part.transfer_decoded`、`mail_webhook.part.charset_converted`、`mail_webhook.part.charset_conversion_failed` を見る
+- メール本文、件名、from、LINE メッセージ本文、LINE ID の全文はログへ出さない

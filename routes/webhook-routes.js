@@ -23,6 +23,11 @@ const createWebhookRoutes = ({
   logger,
 }) => {
   const router = express.Router();
+  const createSafeLogId = (value) => (
+    logger && typeof logger.createLogCorrelationId === 'function'
+      ? logger.createLogCorrelationId(value)
+      : undefined
+  );
 
   router.post('/msg-webhook', lineWebhookMiddleware, async (req, res, next) => {
     try {
@@ -33,7 +38,7 @@ const createWebhookRoutes = ({
         const lineGroupSummary = await msgbot.getGroupSummary(lineGroupId);
         logger.logInfo('line.group_join.recipient_sync', {
           requestId: req.requestId,
-          lineGroupId,
+          lineGroupKey: createSafeLogId(lineGroupId),
         });
         await db.addRecipient(lineGroupId, 1, lineGroupSummary.groupName.substring(0, 63));
       }

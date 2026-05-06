@@ -87,6 +87,13 @@ const createApp = ({
   const sessionOptions = createSessionOptions({
     sessionOptions: config.sessionOptions,
   });
+  const secureSessionMiddleware = session({
+    ...sessionOptions,
+    cookie: {
+      ...sessionOptions.cookie,
+      secure: true,
+    },
+  });
   const csrf = doubleCsrf({
     getSecret: () => process.env.CSRF_SECRET || sessionOptions.secret,
     getSessionIdentifier: (req) => req.sessionID || '',
@@ -116,7 +123,7 @@ const createApp = ({
 
   app
     .use(logger.createRequestLogger())
-    .use(session(sessionOptions))
+    .use(secureSessionMiddleware)
     .use(cookieParser(sessionOptions.secret))
     .use(helmet(config.helmetOption))
     .use(createWebhookRoutes({

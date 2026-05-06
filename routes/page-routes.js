@@ -73,6 +73,11 @@ const createPageRoutes = ({
   const router = express.Router();
   const indexTemplate = path.join(rootDir, 'pages/index');
   const loginTemplate = path.join(rootDir, 'pages/login');
+  const createSafeLogId = (value) => (
+    logger && typeof logger.createLogCorrelationId === 'function'
+      ? logger.createLogCorrelationId(value)
+      : undefined
+  );
   const authRateLimiter = rateLimit(createRateLimitOptions({
     options: authRateLimit,
     defaults: defaultRateLimits.auth,
@@ -82,7 +87,10 @@ const createPageRoutes = ({
 
   router.get('/', async (req, res, next) => {
     const extUserId = req.session.userId;
-    logger.logInfo('page.index.render', { requestId: req.requestId, extUserId });
+    logger.logInfo('page.index.render', {
+      requestId: req.requestId,
+      extUserKey: createSafeLogId(extUserId),
+    });
     if (! await helpers.isLoggedIn(extUserId)) {
       res.redirect(`${req.baseUrl}/login`);
       return;
@@ -148,8 +156,8 @@ const createPageRoutes = ({
       delete req.session.line_login_nonce;
       logger.logInfo('auth.callback.succeeded', {
         requestId: req.requestId,
-        lineUserId,
-        userId,
+        lineUserKey: createSafeLogId(lineUserId),
+        userKey: createSafeLogId(userId),
       });
       return res.redirect(`${req.baseUrl}/`);
     } catch (error) {

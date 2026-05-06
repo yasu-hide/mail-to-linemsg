@@ -192,9 +192,11 @@ sequenceDiagram
 - /mail-webhook は処理完了後に 200 を返し、既知エラーは共通エラーフォーマットで返す
 - /mail-webhook は添付をメモリ保持しないが、text または html 本文は UTF-8 変換のために保持する
 - transfer-encoding / charset 変換で失敗した場合は warning ログを残し、本文復旧のため UTF-8 デコードへフォールバックする
+- charsets の JSON が不正な場合は warning ログを残し、可能な範囲で UTF-8 として本文復元と LINE 通知を継続する
 - LINE 送信メッセージは 1 本の text message に集約される
 - LINE 送信メッセージが 5000 文字を超える場合は、`（省略）` を付けて切り詰める
 - MQTT payload は data キーを持つ単純な JSON
 - セッション secret は LINE Login の channel secret を流用している
-- API/webhook には `x-request-id` を付与し、構造化ログで `request.started` と `request.completed` を出す
+- API/webhook には `x-request-id` を付与し、構造化ログで `request.started`、`request.completed`、mail webhook の処理段階、LINE push の開始/成功/失敗を出す
+- ログにはメール本文、件名、from、LINE メッセージ本文、LINE ID の全文を出さない
 - LINE push と MQTT publish は一時障害時に最小限の再試行を行う

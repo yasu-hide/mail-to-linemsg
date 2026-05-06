@@ -3,13 +3,13 @@ const express = require('express');
 const { Iconv } = require('iconv');
 const request = require('supertest');
 const {
-  createMailWebhookHandler,
   decodeAndConvertMailPart,
 } = require('../lib/mail-webhook');
 const { createErrorMiddleware } = require('../lib/errors');
 const {
   createLogCorrelationId,
 } = require('../lib/logger');
+const { createWebhookRoutes } = require('../routes/webhook-routes');
 
 const createCaptureLogger = () => {
   const entries = [];
@@ -42,7 +42,7 @@ const createWebhookTestApp = ({
     req.requestId = 'test-request-id';
     next();
   });
-  app.post('/mail-webhook', createMailWebhookHandler({
+  app.use(createWebhookRoutes({
     db: {
       getEnabledRecipientByEmail: async () => ({
         line_recipient_id: 'U1234567890abcdef',
@@ -54,6 +54,14 @@ const createWebhookTestApp = ({
     mqttPublish: null,
     logger: resolvedLogger,
     verifyInboundParseWebhookSignature,
+    mailWebhookRateLimit: {
+      windowMs: 60 * 1000,
+      limit: 300,
+    },
+    lineWebhookMiddleware: (req, res, next) => {
+      req.body = { events: [] };
+      next();
+    },
   }));
   app.use(createErrorMiddleware());
 

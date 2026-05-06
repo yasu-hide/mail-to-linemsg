@@ -65,30 +65,13 @@ const createHelpers = ({
   };
 };
 
-const createSessionOptions = ({
-  sessionOptions,
-  allowInsecureSessionCookie,
-}) => {
-  const secureSessionOptions = {
-    ...sessionOptions,
-    cookie: {
-      ...(sessionOptions.cookie || {}),
-      secure: true,
-    },
-  };
-
-  if (!allowInsecureSessionCookie) {
-    return secureSessionOptions;
-  }
-
-  return {
-    ...secureSessionOptions,
-    cookie: {
-      ...secureSessionOptions.cookie,
-      secure: Boolean(sessionOptions.cookie && sessionOptions.cookie.secure),
-    },
-  };
-};
+const createSessionOptions = ({ sessionOptions }) => ({
+  ...sessionOptions,
+  cookie: {
+    ...(sessionOptions.cookie || {}),
+    secure: true,
+  },
+});
 
 const createApp = ({
   rootDir,
@@ -103,7 +86,6 @@ const createApp = ({
   const isProduction = app.get('env') === 'production';
   const sessionOptions = createSessionOptions({
     sessionOptions: config.sessionOptions,
-    allowInsecureSessionCookie: config.allowInsecureSessionCookie,
   });
   const csrf = doubleCsrf({
     getSecret: () => process.env.CSRF_SECRET || sessionOptions.secret,

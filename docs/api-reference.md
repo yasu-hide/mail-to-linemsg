@@ -8,7 +8,7 @@
 - 未認証時の API 応答: 主に 401
 - 状態変更 API は csrf-csrf の CSRF トークンが必須（`X-CSRF-Token` ヘッダ）
 - セッション Cookie 名: `mail_to_linemsg.sid`
-- セッション Cookie 属性: `httpOnly=true`、`sameSite=lax`、`secure` は production で有効
+- セッション Cookie 属性: `httpOnly=true`、`sameSite=lax`、`secure=true`
 
 ### GET /api/csrf-token
 

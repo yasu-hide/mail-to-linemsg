@@ -105,20 +105,15 @@ const run = async () => {
           secure: false,
         },
       },
-      allowInsecureSessionCookie: false,
     });
     assert.strictEqual(secureOptions.cookie.secure, true);
 
-    const insecureOptions = createSessionOptions({
+    const defaultCookieOptions = createSessionOptions({
       sessionOptions: {
         secret: 'test-session-secret',
-        cookie: {
-          secure: false,
-        },
       },
-      allowInsecureSessionCookie: true,
     });
-    assert.strictEqual(insecureOptions.cookie.secure, false);
+    assert.strictEqual(defaultCookieOptions.cookie.secure, true);
   }
 
   {
@@ -174,18 +169,6 @@ const run = async () => {
     const limitedRes = await request(app).get('/callback');
     assert.strictEqual(limitedRes.status, 429);
     assert.match(limitedRes.text, /Auth rate limit exceeded\./);
-  }
-
-  {
-    const app = createTestApp({
-      config: {
-        allowInsecureSessionCookie: true,
-      },
-    });
-    const res = await request(app).get('/auth');
-    assert.strictEqual(res.status, 302);
-    assert.ok(res.headers['set-cookie']);
-    assert.ok(res.headers['set-cookie'].some(cookie => !cookie.includes(' Secure')));
   }
 
   {

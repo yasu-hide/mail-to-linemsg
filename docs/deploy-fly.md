@@ -86,6 +86,29 @@ GitHub Actions では対話ログインを行いません。
 - Fly アプリが正常起動している
 - Login callback URL が期待どおり反映されている
 
+## Fly Grafana での運用確認
+
+Fly.io の managed Grafana では、Fly が自動で収集する HTTP レスポンス系の metrics を確認できます。
+アプリ固有の切り分けは、標準出力・標準エラーに出る JSON ログと合わせて確認します。
+
+Grafana を開く例:
+
+```bash
+fly dashboard metrics -a <fly-app-name> --grafana
+```
+
+HTTP 5xx を見る例:
+
+```promql
+sum(increase(fly_app_http_responses_count{app="<fly-app-name>",status=~"5.."}[10m]))
+```
+
+環境や見たい入口によっては、`fly_edge_http_responses_count` も確認します。`fly_app_http_responses_count` はアプリ側で返したレスポンス、`fly_edge_http_responses_count` は Fly edge 側で見えたレスポンスの確認に使います。
+
+メール webhook の LINE push 最終失敗は、アプリでは `LINE_PUSH_FAILED` として HTTP 502 を返します。Fly Grafana では HTTP 5xx の増加を見て、該当時間帯の JSON ログで `line.push.failed` と `request.failed` を確認します。
+
+文字コード変換失敗は `mail_webhook.part.charset_conversion_failed` の warning ログで確認します。この場合は可能な範囲で UTF-8 として本文復元を継続するため、HTTP 200 になることがあります。Fly の HTTP 5xx metrics だけでは検知できないため、文字化け調査では JSON ログを確認します。
+
 ## トラブル時
 
 - `Missing required secret` または `Missing required variable` が出たら、Secrets / Variables を確認する

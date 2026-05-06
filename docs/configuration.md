@@ -333,6 +333,6 @@ curl -i \
 
 - メールが届いたか確認する: `requestId` で `request.started`、`mail_webhook.received`、`mail_webhook.signature.verified` の順に出ているかを見る
 - 宛先解決を確認する: `mail_webhook.recipient.resolved` が出ているかを見る。宛先や LINE ID の全文は出さず、短い相関キーだけを出す
-- LINE 通知を確認する: `line.push.started` の後に `line.push.succeeded` または `line.push.failed` が出ているかを見る
+- LINE 通知を確認する: `line.push.started` の後に `line.push.succeeded` または `line.push.failed` が出ているかを見る。最終失敗時は `request.failed` の `code` と `httpStatus` も見る
 - 文字化けを確認する: `mail_webhook.part.transfer_decoded`、`mail_webhook.part.charset_converted`、`mail_webhook.part.charset_conversion_failed` を見る
 - メール本文、件名、from、LINE メッセージ本文、LINE ID の全文はログへ出さない

@@ -21,6 +21,7 @@
 - [api-reference.md](./api-reference.md): Webhook、OAuth、REST API の仕様
 - [data-model.md](./data-model.md): PostgreSQL テーブルとアプリ内の関連
 - [configuration.md](./configuration.md): 環境変数、起動方法、デプロイ周り
+- [QDRANT_QUERY_TEMPLATES.md](./QDRANT_QUERY_TEMPLATES.md): Qdrant 検索テンプレートと2段検索の運用手順
 
 図を先に見たいなら、[system-overview.md](./system-overview.md) のシーケンス図と [data-model.md](./data-model.md) の ER 図から入るのが早い。
 

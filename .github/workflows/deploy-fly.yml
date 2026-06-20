@@ -22,11 +22,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Login to DHI Community Registry
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          mkdir -p ~/.docker
+          # credsStore が設定されていると CI では credential helper が動作しないため除去する
+          if [ -f ~/.docker/config.json ]; then
+            jq 'del(.credsStore) | del(.credHelpers)' ~/.docker/config.json > /tmp/.docker-cfg-tmp.json
+            mv /tmp/.docker-cfg-tmp.json ~/.docker/config.json
+          else
+            echo '{}' > ~/.docker/config.json
+          fi
+          printf '%s' "$DOCKERHUB_TOKEN" | docker login dhi.io -u "$DOCKERHUB_USERNAME" --password-stdin
 
       - name: Pull DHI base image
         run: docker pull dhi.io/node:22-alpine-sfw-dev

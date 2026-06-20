@@ -151,7 +151,7 @@ pnpm start
 
 ### Dockerfile
 
-- base image: node:20-bookworm-slim
+- base image: dhi.io/node:22-alpine-sfw-dev
 - /app にソースを配置
 - @pnpm/exe で pnpm 11.0.4 を導入して pnpm install 実行
 - EXPOSE 3000

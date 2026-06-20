@@ -28,6 +28,9 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      - name: Pull DHI base image
+        run: docker pull dhi.io/node:22-alpine-sfw-dev
+
       - name: Setup flyctl
         uses: superfly/flyctl-actions/setup-flyctl@master
 

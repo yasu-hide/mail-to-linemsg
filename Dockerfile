@@ -1,11 +1,9 @@
-FROM node:20-bookworm-slim AS base
+FROM dhi.io/node:22-alpine-sfw-dev AS base
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
-ENV npm_config_node_gyp="/usr/local/lib/node_modules/npm/node_modules/node-gyp/bin/node-gyp.js"
+ENV npm_config_node_gyp="/usr/lib/node_modules/npm/node_modules/node-gyp/bin/node-gyp.js"
 WORKDIR /app
-RUN apt-get update \
-	&& apt-get install -y --no-install-recommends python3 make g++ \
-	&& rm -rf /var/lib/apt/lists/* \
+RUN apk add --no-cache python3 make g++ \
 	&& npm install -g @pnpm/exe@11.0.4
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml /app/
 

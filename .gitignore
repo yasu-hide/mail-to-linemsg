@@ -11,3 +11,4 @@ inbound-parse-webhook-private.pem
 inbound-parse-webhook-public.pem
 artifacts/
 .gstack/
+coverage

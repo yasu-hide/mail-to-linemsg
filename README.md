@@ -1,3 +1,5 @@
+[![codecov](https://codecov.io/github/yasu-hide/mail-to-linemsg/graph/badge.svg?token=ZZA20G4I6T)](https://codecov.io/github/yasu-hide/mail-to-linemsg)
+
 # mail-to-linemsg
 
 メールをLINEメッセージに送信

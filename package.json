@@ -30,7 +30,7 @@
     "@line/bot-sdk": "^11.0.1",
     "@sendgrid/eventwebhook": "^8.0.0",
     "async-mqtt": "^2.6.3",
-    "body-parser": "^2.2.2",
+    "body-parser": "^2.3.0",
     "busboy": "^1.6.0",
     "cookie-parser": "^1.4.7",
     "crypto": "^1.0.1",

@@ -18,6 +18,7 @@
   "scripts": {
     "start": "node index.js",
     "test": "node test/logger.test.js && node test/decode-transfer-encoding.test.js && node test/mail-text.test.js && node test/e2e-mail-samples.test.js && node test/csrf-protection.test.js && node test/session-security.test.js && node test/address-ownership.test.js && node test/inbound-parse-webhook-signature.test.js && node test/errors.test.js && node test/app-wiring.test.js && node test/codeql-fixes.test.js && node test/mail-webhook-rate-limit.test.js && node test/mail-webhook-observability.test.js",
+    "coverage": "c8 pnpm test",
     "qdrant:diff-targets": "node scripts/qdrant-diff-targets.js",
     "qdrant:store-batch": "node scripts/qdrant-store-batch.js",
     "qdrant:two-hop-validate": "node scripts/qdrant-two-hop-validate.js",
@@ -52,6 +53,7 @@
     "secure-compare": "^3.0.1"
   },
   "devDependencies": {
+    "c8": "^9.1.0",
     "eslint": "^10.4.1",
     "eslint-config-airbnb": "^19.0.4",
     "eslint-plugin-import": "^2.32.0",

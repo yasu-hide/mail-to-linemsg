@@ -14,6 +14,7 @@ overrides:
   "flatted": "3.4.2"
   "filelist>minimatch": "5.1.8"
   "minimatch@3.1.4>brace-expansion": "1.1.13"
+  # minimatch は 3.1.4 に固定。これに合わせ c8 は ^9 系に固定している(c8@10+ は minimatch@9 を要求するため)
   "minimatch": "3.1.4"
   "table>ajv": "8.18.0"
   "form-data": "4.0.6"

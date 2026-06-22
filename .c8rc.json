@@ -1,0 +1,20 @@
+{
+  "all": true,
+  "src": ["."],
+  "include": [
+    "index.js",
+    "app/**/*.js",
+    "lib/**/*.js",
+    "routes/**/*.js"
+  ],
+  "exclude": [
+    "test/**",
+    "scripts/**",
+    "db-pgsql.js",
+    "mqtt-publish.js",
+    "coverage/**",
+    "**/node_modules/**"
+  ],
+  "reporter": ["text", "lcovonly"],
+  "reports-dir": "coverage"
+}

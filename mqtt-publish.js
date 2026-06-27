@@ -18,10 +18,30 @@ class Mqtt {
   }
 
   connect() {
-    if (!this.client || !this.client.connected) {
-      debug(`Connecting to ${this.uri} username=${this.username}`);
-      this.client = mqtt.connect(this.uri, { username: this.username, password: this.password });
+    if (this.client) {
+      // 接続中（CONNACK 前）でも client を共有し、同時 publish による
+      // 二重 connect / client 上書きを防ぐ。
+      return;
     }
+    debug(`Connecting to ${this.uri} username=${this.username}`);
+    const client = mqtt.connect(this.uri, {
+      username: this.username,
+      password: this.password,
+      connectTimeout: 2000,
+      reconnectPeriod: 0,
+    });
+    // error イベントにリスナーが無いと未処理 error でプロセスが落ちるため必ず張る。
+    client.on('error', (err) => {
+      debug(`MQTT client error: ${err && err.message}`);
+    });
+    // reconnectPeriod:0 では自動再接続しないため、切断時に参照を捨て、
+    // 次回 publish で新しい接続を張れるようにする。
+    client.on('close', () => {
+      if (this.client === client) {
+        this.client = null;
+      }
+    });
+    this.client = client;
   }
 
   async disconnect() {

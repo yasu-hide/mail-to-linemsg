@@ -28,6 +28,7 @@ const createWebhookTestApp = ({
   logger,
   pushMessage = async () => ({}),
   mqttPublish = null,
+  mqttPublishDeadlineMs,
   verifyInboundParseWebhookSignature = () => {},
 } = {}) => {
   const app = express();
@@ -47,6 +48,7 @@ const createWebhookTestApp = ({
       pushMessage,
     },
     mqttPublish,
+    mqttPublishDeadlineMs,
     logger: resolvedLogger,
     verifyInboundParseWebhookSignature,
     mailWebhookRateLimit: {
@@ -107,6 +109,8 @@ const run = async () => {
     assert.strictEqual(published, 'private subject');
     assert.ok(events.includes('line.push.succeeded'));
     assert.ok(events.includes('mqtt.publish.succeeded'));
+    const succeededLog = logger.entries.find((entry) => entry.event === 'mqtt.publish.succeeded');
+    assert.strictEqual(typeof succeededLog.elapsedMs, 'number');
   }
 
   // 2. LINE ok + MQTT fail => 207
@@ -242,18 +246,24 @@ const run = async () => {
     assert.ok(events.includes('mqtt.publish.succeeded'));
   }
 
-  // 8. MQTT hangs => channel deadline fails it => 207 (no hang)
+  // 8. MQTT hangs => channel deadline fails it => 207 (no hang).
+  //    Inject a small deadline so the test stays fast.
   {
     const logger = createCaptureLogger();
     const { app } = createWebhookTestApp({
       logger,
       mqttPublish: { topic: 'test/topic', publish: () => new Promise(() => {}) },
+      mqttPublishDeadlineMs: 150,
     });
     const res = await postMailWebhook(app);
+    const failedLog = logger.entries.find((entry) => entry.event === 'mqtt.publish.failed');
 
     assert.strictEqual(res.status, 207);
     assert.deepStrictEqual(res.body.delivered, ['line']);
     assert.deepStrictEqual(res.body.failed, ['mqtt']);
+    assert.strictEqual(failedLog.message, 'MQTT publish deadline exceeded.');
+    assert.strictEqual(typeof failedLog.elapsedMs, 'number');
+    assert.strictEqual(failedLog.deadlineMs, 150);
   }
 
   console.log('mail webhook delivery tests passed');

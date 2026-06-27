@@ -169,6 +169,30 @@ const run = async () => {
     assertNoSensitiveContent(res, logger);
   }
 
+  // 4b. Both fail, LINE error without headers and using `status` (not statusCode)
+  //     => 502 LINE_PUSH_FAILED (covers the no-headers / status-fallback branches)
+  {
+    const logger = createCaptureLogger();
+    const { app } = createWebhookTestApp({
+      logger,
+      pushMessage: async () => {
+        const error = new Error('LINE unavailable');
+        error.status = 503;
+        throw error;
+      },
+      mqttPublish: { topic: 'test/topic', publish: async () => { throw new Error('mqtt down'); } },
+    });
+    const res = await postMailWebhook(app);
+    const events = getEvents(logger);
+
+    assert.strictEqual(res.status, 502);
+    assert.strictEqual(res.body.error.code, 'LINE_PUSH_FAILED');
+    assert.strictEqual(res.body.error.details.statusCode, 503);
+    assert.strictEqual(res.body.error.details.lineRequestId, undefined);
+    assert.ok(events.includes('line.push.retry'));
+    assert.ok(events.includes('mqtt.publish.failed'));
+  }
+
   // 5. mqttPublish null + LINE ok => 200 (single channel never 207)
   {
     const logger = createCaptureLogger();

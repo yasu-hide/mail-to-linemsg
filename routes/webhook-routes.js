@@ -20,6 +20,7 @@ const createWebhookRoutes = ({
   lineWebhookMiddleware,
   verifyInboundParseWebhookSignature,
   mailWebhookRateLimit,
+  mqttPublishDeadlineMs,
   logger,
 }) => {
   const router = express.Router();
@@ -57,6 +58,7 @@ const createWebhookRoutes = ({
       mqttPublish,
       logger,
       verifyInboundParseWebhookSignature,
+      mqttPublishDeadlineMs,
     }),
   );
 

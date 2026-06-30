@@ -221,7 +221,7 @@ const run = async () => {
     assert.strictEqual(res.body.error.code, 'LINE_PUSH_FAILED');
   }
 
-  // 7. MQTT retry: fail once then succeed => 200, mqtt.publish.retry logged
+  // 7. MQTT is not retried in-request: a single failure => 207, publish called once.
   {
     const logger = createCaptureLogger();
     let attempts = 0;
@@ -231,19 +231,17 @@ const run = async () => {
         topic: 'test/topic',
         publish: async () => {
           attempts += 1;
-          if (attempts === 1) {
-            throw new Error('transient');
-          }
+          throw new Error('transient');
         },
       },
     });
     const res = await postMailWebhook(app);
     const events = getEvents(logger);
 
-    assert.strictEqual(res.status, 200);
-    assert.strictEqual(attempts, 2);
-    assert.ok(events.includes('mqtt.publish.retry'));
-    assert.ok(events.includes('mqtt.publish.succeeded'));
+    assert.strictEqual(res.status, 207);
+    assert.strictEqual(attempts, 1);
+    assert.ok(!events.includes('mqtt.publish.retry'));
+    assert.ok(events.includes('mqtt.publish.failed'));
   }
 
   // 8. MQTT hangs => channel deadline fails it => 207 (no hang).

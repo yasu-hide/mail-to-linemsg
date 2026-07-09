@@ -17,7 +17,7 @@
   },
   "scripts": {
     "start": "node index.js",
-    "test": "node test/logger.test.js && node test/decode-transfer-encoding.test.js && node test/mail-text.test.js && node test/e2e-mail-samples.test.js && node test/csrf-protection.test.js && node test/session-security.test.js && node test/address-ownership.test.js && node test/inbound-parse-webhook-signature.test.js && node test/errors.test.js && node test/app-wiring.test.js && node test/codeql-fixes.test.js && node test/mail-webhook-rate-limit.test.js && node test/mail-webhook-observability.test.js && node test/mail-webhook-delivery.test.js && node test/api-routes.test.js",
+    "test": "node scripts/run-tests.js",
     "coverage": "c8 pnpm test",
     "qdrant:diff-targets": "node scripts/qdrant-diff-targets.js",
     "qdrant:store-batch": "node scripts/qdrant-store-batch.js",

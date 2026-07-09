@@ -1,5 +1,4 @@
 const assert = require('assert');
-const express = require('express');
 const bodyParser = require('body-parser');
 const session = require('express-session');
 const cookieParser = require('cookie-parser');
@@ -7,12 +6,13 @@ const { doubleCsrf } = require('csrf-csrf');
 const request = require('supertest');
 const { createApiRoutes } = require('../routes/api-routes');
 const { AppError, createErrorMiddleware } = require('../lib/errors');
+const { createBaseApp } = require('./helpers/route-test-app');
 
 // 各ケースで fresh な app と db/helpers スタブを生成する（ケース間汚染を防ぐ）。
 // createApp は cookie.secure=true を強制し supertest(HTTP) では cookie が届かないため、
 // スタンドアロンの express アプリに createApiRoutes を直接マウントする。
 const createTestApp = (overrides = {}) => {
-  const app = express();
+  const app = createBaseApp();
   const csrf = doubleCsrf({
     getSecret: () => 'csrf-test-secret',
     getSessionIdentifier: (req) => req.sessionID || '',
@@ -50,10 +50,6 @@ const createTestApp = (overrides = {}) => {
   app.use(cookieParser('test-secret'));
   app.use(bodyParser.urlencoded({ extended: true }));
   app.use(bodyParser.json());
-  app.use((req, res, next) => {
-    req.requestId = 'test-request-id';
-    next();
-  });
   app.use(createApiRoutes({
     db,
     helpers,

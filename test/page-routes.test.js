@@ -283,6 +283,36 @@ const run = async () => {
     });
   }
   {
+    // 11b. token API が non-ok（error_description なし）→ json.error フォールバック
+    const fetchStub = createLineFetchStub({
+      tokenResponse: errorResponse(400, { error: 'invalid_request' }),
+    });
+    await withStubbedFetch(fetchStub, async () => {
+      const { app, session, logger } = createTestApp({
+        session: { line_login_state: 'state-1' },
+      });
+      const res = await request(app).get('/callback').query({ code: 'code-1', state: 'state-1' });
+
+      assertCallbackFailed(res, session, logger);
+      assert.strictEqual(fetchStub.calls.length, 1);
+    });
+  }
+  {
+    // 11c. token API が non-ok（エラー情報なし）→ ステータス文言フォールバック
+    const fetchStub = createLineFetchStub({
+      tokenResponse: errorResponse(400, {}),
+    });
+    await withStubbedFetch(fetchStub, async () => {
+      const { app, session, logger } = createTestApp({
+        session: { line_login_state: 'state-1' },
+      });
+      const res = await request(app).get('/callback').query({ code: 'code-1', state: 'state-1' });
+
+      assertCallbackFailed(res, session, logger);
+      assert.strictEqual(fetchStub.calls.length, 1);
+    });
+  }
+  {
     // 12a. token応答不正: expires_in が 0（id_token あり）
     const fetchStub = createLineFetchStub({
       tokenResponse: okResponse({ expires_in: 0, id_token: 'idtoken' }),

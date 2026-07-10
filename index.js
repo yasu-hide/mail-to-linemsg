@@ -5,8 +5,12 @@ const MQTTPublish = require('./mqtt-publish');
 const Database = require('./db-pgsql');
 const { createApp } = require('./app/create-app');
 const { logInfo } = require('./lib/logger');
+const { requireSessionSecret } = require('./lib/session-secret');
 
-const sessionSecret = process.env.SESSION_SECRET || process.env.LINECORP_PLATFORM_LOGIN_CHANNEL_SECRET;
+// SESSION_SECRET is required; unset means fail-fast at load time.
+// (Distinct from the mqttPublish try/catch below, which disables an
+//  optional feature and continues. A missing session secret must stop boot.)
+const sessionSecret = requireSessionSecret(process.env);
 const sessionOptions = {
   secret: sessionSecret,
   name: 'mail_to_linemsg.sid',

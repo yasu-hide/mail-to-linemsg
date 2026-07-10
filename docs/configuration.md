@@ -68,9 +68,18 @@ INBOUND_PARSE_WEBHOOK_PRIVATE_KEY="-----BEGIN EC PRIVATE KEY-----\n...\n-----END
 
 補足:
 
-- `SESSION_SECRET` 未設定時は `LINECORP_PLATFORM_LOGIN_CHANNEL_SECRET` をフォールバックで使用する
+- `SESSION_SECRET` は必須。未設定の場合はフォールバックせず、起動時にエラーで停止する(fail-fast)。他のチャネルシークレットとは独立した専用のランダム値を設定する
 - `SESSION_STORE` は本番で外部セッションストアを使う場合の運用フラグとして扱う
 - `NODE_ENV=production` かつ `SESSION_STORE` 未設定の場合、起動時に MemoryStore 利用の警告を出力する
+
+### CSRF
+
+- CSRF_SECRET
+
+補足:
+
+- `CSRF_SECRET` は任意。未設定時は `SESSION_SECRET` を流用する
+- セッション鍵との用途分離のため、独立した専用のランダム値を設定することを推奨する
 
 ### MQTT
 

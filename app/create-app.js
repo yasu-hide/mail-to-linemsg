@@ -124,6 +124,10 @@ const createApp = ({
   app
     .use(logger.createRequestLogger())
     .use(secureSessionMiddleware)
+    // NOTE: signed cookies are not used anywhere in this app (req.signedCookies
+    // is never read), so this secret reuse is currently inactive. If signed
+    // cookies are introduced later, use a dedicated secret instead of reusing
+    // the session secret.
     .use(cookieParser(sessionOptions.secret))
     .use(helmet(config.helmetOption))
     .use(createWebhookRoutes({

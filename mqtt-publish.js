@@ -56,8 +56,8 @@ class Mqtt {
     if (!this.uri) {
       throw new Error('MQTT_URI is not defined.');
     }
-    if (!this.uri.startsWith('mqtt://')) {
-      throw new Error('MQTT_URI must start with mqtt://');
+    if (!this.uri.startsWith('mqtt://') && !this.uri.startsWith('mqtts://')) {
+      throw new Error('MQTT_URI must start with mqtt:// or mqtts://');
     }
     if (!this.username) {
       throw new Error('MQTT_USERNAME is not defined.');

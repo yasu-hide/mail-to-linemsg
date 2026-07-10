@@ -86,6 +86,30 @@ GitHub Actions では対話ログインを行いません。
 - Fly アプリが正常起動している
 - Login callback URL が期待どおり反映されている
 
+## MQTT 運用方針(mqtts:// 推奨)
+
+`MQTT_URI` は `mqtt://`(平文)と `mqtts://`(TLS)の両方を受け付けます。
+
+- 本番運用では `mqtts://` を推奨します。`mqtt://` は既存運用との後方互換のために許可している位置づけで、認証情報(username/password)と通知本文が平文で流れます。
+- ブローカーへの経路が社内の閉域網など信頼できる範囲に限定される場合を除き、`mqtt://` の継続利用は避けてください。
+
+### mqtt:// から mqtts:// への切替手順
+
+1. Fly.io の Secret `MQTT_URI` を `mqtt://` から `mqtts://` に変更する(ホスト・ポートはブローカー側の TLS リスナーに合わせる)
+
+   ```bash
+   fly secrets set MQTT_URI=mqtts://<broker-host>:<tls-port> -a <fly-app-name>
+   ```
+
+2. `fly secrets set` はデプロイをトリガーするため、追加の再デプロイ操作は不要(反映後にアプリが再起動する)
+3. 再起動後、下記の観察方法で接続を確認する
+
+### 接続成功・失敗の観察方法
+
+- メール webhook 経由の MQTT publish 結果は `mqtt.publish.started` / `mqtt.publish.succeeded` / `mqtt.publish.failed` の JSON ログイベントで記録される。切替直後はこれらのイベントで疎通を確認する。
+- `mqtt.publish.failed` の詳細を見たい場合は、`DEBUG=mqtt-publish:module` を設定して再デプロイすると `mqtt-publish.js` 内の接続ログ(`Connecting to ...`、`MQTT client error: ...`)が標準エラーに出力される。
+- TLS証明書検証エラー(自己署名証明書など)の場合、接続が確立できず `mqtt.publish.failed` が記録される。この修正では証明書オプションを追加していないため、ブローカー側が Node 標準の CA 信頼ストアで検証できる証明書を提示している必要がある。
+
 ## Fly Grafana での運用確認
 
 Fly.io の managed Grafana では、Fly が自動で収集する HTTP レスポンス系の metrics を確認できます。

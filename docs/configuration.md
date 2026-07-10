@@ -85,7 +85,7 @@ INBOUND_PARSE_WEBHOOK_PRIVATE_KEY="-----BEGIN EC PRIVATE KEY-----\n...\n-----END
 
 - MQTT_PASS は未設定なら空文字になる
 - 初期化に失敗した場合、アプリは MQTT 無効で継続する
-- publish 時には MQTT_URI が mqtt:// で始まることを要求する
+- publish 時には MQTT_URI が mqtt:// または mqtts:// で始まることを要求する(TLS証明書検証はNode標準のCA信頼ストアに依拠し、追加のTLSオプションはない)
 
 ### 実行ポート
 

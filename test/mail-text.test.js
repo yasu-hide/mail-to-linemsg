@@ -87,19 +87,84 @@ const run = () => {
 
   {
     const short = 'abc';
-    assert.strictEqual(truncateLineTextMessage(short, { maxChars: 5, marker: '...' }), 'abc');
+    assert.strictEqual(truncateLineTextMessage(short, { maxChars: 5, marker: '...' }).text, 'abc');
   }
 
   {
     const text = 'abcdef';
     const truncated = truncateLineTextMessage(text, { maxChars: 5, marker: '..' });
-    assert.strictEqual(truncated, 'abc..');
+    assert.strictEqual(truncated.text, 'abc..');
   }
 
   {
     const text = 'A😀BC😀D';
     const truncated = truncateLineTextMessage(text, { maxChars: 5, marker: '..' });
-    assert.strictEqual(truncated, 'A😀B..');
+    assert.strictEqual(truncated.text, 'A😀B..');
+  }
+
+  {
+    // IVS(異体字選択子)境界分断防止の確認。
+    // 「辻」+ IVS(U+E0100)は2コードポイントから成る1書記素クラスタ。
+    // maxChars=5, marker='..'(2コードポイント)なので truncatedLength=3。
+    // 先頭2文字'AB'(2コードポイント)の直後にこのIVSペアを置くと、
+    // 境界(3コードポイント目)がちょうどペアの内部(base側)にまたがる。
+    // この場合、ペア全体が除外され、baseだけ・selectorだけが残ることはない。
+    const base = '辻';
+    const ivs = '\u{E0100}';
+    const text = `AB${base}${ivs}CD`;
+    const result = truncateLineTextMessage(text, { maxChars: 5, marker: '..' });
+    assert.strictEqual(result.text, 'AB..');
+    assert.strictEqual(result.text.includes(base), false);
+    assert.strictEqual(result.text.includes(ivs), false);
+    assert.strictEqual(result.truncated, true);
+    assert.strictEqual(result.charsBefore, 6);
+    assert.strictEqual(result.charsAfter, 4);
+  }
+
+  {
+    // ZWJ絵文字境界分断防止の確認。
+    // 家族ZWJ絵文字「👨‍👩‍👧」(man, ZWJ, woman, ZWJ, girl)は5コードポイントから
+    // 成る1書記素クラスタ。maxChars=5, marker='..'なので truncatedLength=3。
+    // 先頭2文字'AB'の直後にこのZWJシーケンスを置くと、境界(3コードポイント目)が
+    // ちょうどシーケンスの内部にまたがる。この場合シーケンス全体が除外され、
+    // 一部の構成絵文字やZWJだけが孤立して残ることはない。
+    const family = '\u{1F468}\u{200D}\u{1F469}\u{200D}\u{1F467}';
+    const text = `AB${family}C`;
+    const result = truncateLineTextMessage(text, { maxChars: 5, marker: '..' });
+    assert.strictEqual(result.text, 'AB..');
+    assert.strictEqual(result.text.includes('\u{200D}'), false);
+    assert.strictEqual(result.truncated, true);
+    assert.strictEqual(result.charsBefore, 8);
+    assert.strictEqual(result.charsAfter, 4);
+  }
+
+  {
+    // marker: '' を明示指定した場合の回帰確認(`??`修正で既定値に差し戻らない)。
+    const text = 'abcdef';
+    const result = truncateLineTextMessage(text, { maxChars: 5, marker: '' });
+    assert.strictEqual(result.text, 'abcde');
+    assert.strictEqual(result.truncated, true);
+    assert.strictEqual(result.charsBefore, 6);
+    assert.strictEqual(result.charsAfter, 5);
+  }
+
+  {
+    // 戻り値の形状確認(切り詰めなし・切り詰めありの両方)。
+    const notTruncated = truncateLineTextMessage('abc', { maxChars: 5, marker: '..' });
+    assert.deepStrictEqual(notTruncated, {
+      text: 'abc',
+      truncated: false,
+      charsBefore: 3,
+      charsAfter: 3,
+    });
+
+    const truncated = truncateLineTextMessage('abcdef', { maxChars: 5, marker: '..' });
+    assert.deepStrictEqual(truncated, {
+      text: 'abc..',
+      truncated: true,
+      charsBefore: 6,
+      charsAfter: 5,
+    });
   }
 
   console.log('mail-text tests passed');

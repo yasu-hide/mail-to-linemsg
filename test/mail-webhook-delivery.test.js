@@ -264,6 +264,95 @@ const run = async () => {
     assert.strictEqual(failedLog.deadlineMs, 150);
   }
 
+  // 9. 本文中のIVS(異体字選択子)がLINEメッセージのmaxChars(5000)境界にまたがる
+  //    場合でも、書記素クラスタを分断せずに切り詰められる。
+  {
+    const logger = createCaptureLogger();
+    let pushedText;
+    const { app } = createWebhookTestApp({
+      logger,
+      pushMessage: async ({ messages }) => {
+        pushedText = messages[0].text;
+        return {};
+      },
+      mqttPublish: null,
+    });
+
+    const from = 'a@b.co';
+    const subject = 's';
+    // lib/mail-webhook.js の lineMessageText 組み立てと同じ形の接頭辞。
+    const prefix = `From: ${from}\r\nSubject: ${subject}\r\n\r\n`;
+    const prefixLen = Array.from(prefix).length;
+    const maxChars = 5000;
+    const marker = '\r\n（省略）';
+    const markerLen = Array.from(marker).length;
+    const truncatedLength = maxChars - markerLen;
+    const base = '辻';
+    const ivs = '\u{E0100}';
+    // 接頭辞+filler(単純ASCII)の直後にIVSペアを置き、境界(truncatedLength文字目)
+    // がちょうどペアの内部(base側)にまたがるように文字数を調整する。
+    const fillerBeforeLength = truncatedLength - 1 - prefixLen;
+    const filler = 'A'.repeat(fillerBeforeLength);
+    const suffix = 'Z'.repeat(50);
+    const body = `${filler}${base}${ivs}${suffix}`;
+
+    const res = await postMailWebhook(app, { from, subject, text: body });
+
+    assert.strictEqual(res.status, 200);
+    assert.strictEqual(pushedText.includes(base), false);
+    assert.strictEqual(pushedText.includes(ivs), false);
+    assert.ok(pushedText.endsWith(marker));
+
+    const preparedLog = logger.entries.find((entry) => entry.event === 'mail_webhook.message.prepared');
+    assert.strictEqual(preparedLog.truncated, true);
+    assert.strictEqual(preparedLog.charsBefore, prefixLen + fillerBeforeLength + 2 + suffix.length);
+    assert.strictEqual(preparedLog.charsAfter, fillerBeforeLength + prefixLen + markerLen);
+  }
+
+  // 10. 本文中の家族ZWJ絵文字がLINEメッセージのmaxChars(5000)境界にまたがる
+  //     場合でも、シーケンス全体を分断せずに切り詰められる。
+  {
+    const logger = createCaptureLogger();
+    let pushedText;
+    const { app } = createWebhookTestApp({
+      logger,
+      pushMessage: async ({ messages }) => {
+        pushedText = messages[0].text;
+        return {};
+      },
+      mqttPublish: null,
+    });
+
+    const from = 'a@b.co';
+    const subject = 's';
+    const prefix = `From: ${from}\r\nSubject: ${subject}\r\n\r\n`;
+    const prefixLen = Array.from(prefix).length;
+    const maxChars = 5000;
+    const marker = '\r\n（省略）';
+    const markerLen = Array.from(marker).length;
+    const truncatedLength = maxChars - markerLen;
+    const family = '\u{1F468}\u{200D}\u{1F469}\u{200D}\u{1F467}';
+    const familyCodePointLength = Array.from(family).length;
+    // 接頭辞+filler(単純ASCII)の直後に家族ZWJ絵文字を置き、境界(truncatedLength
+    // 文字目)がちょうどシーケンスの内部にまたがるように文字数を調整する。
+    const fillerBeforeLength = truncatedLength - 1 - prefixLen;
+    const filler = 'A'.repeat(fillerBeforeLength);
+    const suffix = 'Z'.repeat(50);
+    const body = `${filler}${family}${suffix}`;
+
+    const res = await postMailWebhook(app, { from, subject, text: body });
+
+    assert.strictEqual(res.status, 200);
+    assert.strictEqual(pushedText.includes('\u{200D}'), false);
+    assert.strictEqual(pushedText.includes('\u{1F468}'), false);
+    assert.ok(pushedText.endsWith(marker));
+
+    const preparedLog = logger.entries.find((entry) => entry.event === 'mail_webhook.message.prepared');
+    assert.strictEqual(preparedLog.truncated, true);
+    assert.strictEqual(preparedLog.charsBefore, prefixLen + fillerBeforeLength + familyCodePointLength + suffix.length);
+    assert.strictEqual(preparedLog.charsAfter, fillerBeforeLength + prefixLen + markerLen);
+  }
+
   console.log('mail webhook delivery tests passed');
 };
 

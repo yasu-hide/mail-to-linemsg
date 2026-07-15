@@ -46,7 +46,7 @@
     "helmet": "^8.2.0",
     "html-to-text": "^10.0.0",
     "iconv": "^3.0.1",
-    "mqtt": "^5.15.1",
+    "mqtt": "^5.15.2",
     "multer": "^2.2.0",
     "pg-promise": "^12.7.0",
     "querystring": "^0.2.1",

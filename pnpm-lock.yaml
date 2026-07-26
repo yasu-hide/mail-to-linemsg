@@ -13,7 +13,7 @@ overrides:
   brace-expansion: 2.0.3
   flatted: 3.4.2
   filelist>minimatch: 5.1.8
-  minimatch@3.1.4>brace-expansion: 1.1.13
+  minimatch@3.1.4>brace-expansion: 1.1.16
   minimatch: 3.1.4
   table>ajv: 8.18.0
   form-data: 4.0.6
@@ -438,8 +438,8 @@ packages:
     resolution: {integrity: sha512-2cGmJupaNgg+QUwVLAucDuWuoMZ6EX9iHDRswZ5lsNYEmwPaRknMPCLZz07yTzVq/83p4o/wzbDZbBrTvGGTIw==}
     engines: {node: '>=18'}
 
-  brace-expansion@1.1.13:
-    resolution: {integrity: sha512-9ZLprWS6EENmhEOpjCYW2c8VkmOvckIJZfkr7rBW6dObmfgJ/L1GpSYW5Hpo9lDz4D1+n0Ckz8rU7FwHDQiG/w==}
+  brace-expansion@1.1.16:
+    resolution: {integrity: sha512-IDw48K2/2kRkg9LdJxurvq3lV3aBgq0REY89duEqFRthjlPdXHKMj7EnQOXVckxzgisinf3nHfrcE2FufFLXMw==}
 
   broker-factory@3.1.15:
     resolution: {integrity: sha512-ko+aWvgNuP49meGrdjUu7rC+Y+Wai3cCPxP3xWwHsHfehFjOh5ZQM2yC4gEB2UddeZ/YXhm0K1eG/L6fxym2Og==}
@@ -2372,7 +2372,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  brace-expansion@1.1.13:
+  brace-expansion@1.1.16:
     dependencies:
       balanced-match: 1.0.2
       concat-map: 0.0.1
@@ -3434,7 +3434,7 @@ snapshots:
 
   minimatch@3.1.4:
     dependencies:
-      brace-expansion: 1.1.13
+      brace-expansion: 1.1.16
 
   minimist@1.2.8: {}
 

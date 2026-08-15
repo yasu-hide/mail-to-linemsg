@@ -77,7 +77,7 @@ GitHub Actions では対話ログインを行いません。
 1. Secrets を登録する
 2. Variables を登録する
 3. `.github/workflows/deploy-fly.yml` を `master` へマージする
-4. `master` への push か `workflow_dispatch` でデプロイを実行する
+4. アプリ本体かデプロイ設定の変更を含む `master` への push、または `workflow_dispatch` でデプロイを実行する
 5. Actions ログで deploy 成功を確認する
 
 ## 検証項目

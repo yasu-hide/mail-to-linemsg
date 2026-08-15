@@ -4,6 +4,20 @@ on:
   push:
     branches:
       - master
+    paths:
+      - index.js
+      - db-pgsql.js
+      - mqtt-publish.js
+      - app/**
+      - lib/**
+      - routes/**
+      - pages/**
+      - public/**
+      - package.json
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - Dockerfile
+      - .github/deploy-fly/fly.template.toml
   workflow_dispatch:
 
 permissions:

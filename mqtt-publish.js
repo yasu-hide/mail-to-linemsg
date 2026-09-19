@@ -30,6 +30,7 @@ class Mqtt {
       connectTimeout: 2000,
       reconnectPeriod: 0,
     });
+    client.setMaxListeners(50);
     // error イベントにリスナーが無いと未処理 error でプロセスが落ちるため必ず張る。
     client.on('error', (err) => {
       debug(`MQTT client error: ${err && err.message}`);
@@ -67,8 +68,32 @@ class Mqtt {
     }
     const payload = JSON.stringify({ data: `${message}の通知があります` });
     this.connect();
+    // this.client は close ハンドラで null になりうるため、この publish が対象とする
+    // client をローカルに固定してからリスナーを張る/外す。
+    const { client } = this;
     debug(`Publish to ${this.topic} payload=${payload}`);
-    await this.client.publish(this.topic, payload);
+
+    // QoS0のpublishは未接続時mqtt.jsのオフラインキューに積まれるだけで、接続失敗時に
+    // flushされずコールバックが永久に呼ばれない。接続断イベントとraceし、実際の
+    // エラーで即rejectする(でなければ呼び出し元のdeadlineまでハングし続ける)。
+    let failPublish;
+    const connectionFailed = new Promise((_, reject) => { failPublish = reject; });
+    connectionFailed.catch(() => {}); // client.publish が同期throwしrace未成立でも未処理rejection化しない保険
+    const onError = (err) => {
+      failPublish(err instanceof Error ? err : new Error(`MQTT client error: ${err}`));
+    };
+    const onClose = () => {
+      failPublish(new Error('MQTT connection closed before publish completed.'));
+    };
+    client.once('error', onError);
+    client.once('close', onClose);
+
+    try {
+      await Promise.race([client.publish(this.topic, payload), connectionFailed]);
+    } finally {
+      client.removeListener('error', onError);
+      client.removeListener('close', onClose);
+    }
     // await this.disconnect();
   }
 }

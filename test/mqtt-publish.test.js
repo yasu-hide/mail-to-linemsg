@@ -1,25 +1,16 @@
 const assert = require('assert');
 const asyncMqtt = require('async-mqtt');
+const { EventEmitter } = require('node:events');
 const Mqtt = require('../mqtt-publish');
 
 const originalConnect = asyncMqtt.connect;
 
 const createFakeClient = () => {
-  const listeners = {};
-  const client = {
-    connected: true,
-    on: (event, handler) => {
-      listeners[event] = handler;
-      return client;
-    },
-    publish: async () => {},
-    end: async () => {},
-    trigger: (event, ...args) => {
-      if (listeners[event]) {
-        listeners[event](...args);
-      }
-    },
-  };
+  const client = new EventEmitter();
+  client.connected = true;
+  client.publish = async () => {};
+  client.end = async () => {};
+  client.trigger = (event, ...args) => client.emit(event, ...args);
   return client;
 };
 
@@ -233,6 +224,105 @@ const run = async () => {
 
     const mqttClient = new Mqtt(baseOptions());
     await assert.doesNotReject(() => mqttClient.disconnect());
+  }
+
+  // 10. connection error while publish is pending: reject immediately with
+  //     the real error instead of hanging forever, and remove the
+  //     temporary listeners afterwards.
+  {
+    const calls = [];
+    await withStubbedConnect(
+      (uri, opts) => {
+        const client = createFakeClient();
+        client.publish = () => new Promise(() => {});
+        calls.push({ uri, opts, client });
+        return client;
+      },
+      async () => {
+        const mqttClient = new Mqtt(baseOptions());
+        const publishPromise = mqttClient.publish('subject');
+        calls[0].client.trigger('error', new Error('connack timeout'));
+        await assert.rejects(publishPromise, /connack timeout/);
+        assert.strictEqual(calls[0].client.listenerCount('error'), 1);
+        assert.strictEqual(calls[0].client.listenerCount('close'), 1);
+      },
+    );
+  }
+
+  // 11. connection close while publish is pending: reject immediately, and
+  //     the next publish() reconnects with a new client.
+  {
+    const calls = [];
+    await withStubbedConnect(
+      (uri, opts) => {
+        const client = createFakeClient();
+        client.publish = () => new Promise(() => {});
+        calls.push({ uri, opts, client });
+        return client;
+      },
+      async () => {
+        const mqttClient = new Mqtt(baseOptions());
+        const publishPromise = mqttClient.publish('subject');
+        calls[0].client.trigger('close');
+        await assert.rejects(
+          publishPromise,
+          /MQTT connection closed before publish completed\./,
+        );
+
+        const secondPublishPromise = mqttClient.publish('subject');
+        calls[1].client.trigger('close');
+        await assert.rejects(
+          secondPublishPromise,
+          /MQTT connection closed before publish completed\./,
+        );
+        assert.strictEqual(calls.length, 2);
+      },
+    );
+  }
+
+  // 12. successful publishes do not leak error/close listeners.
+  {
+    const calls = [];
+    await withStubbedConnect(
+      (uri, opts) => {
+        calls.push({ uri, opts, client: createFakeClient() });
+        return calls[calls.length - 1].client;
+      },
+      async () => {
+        const mqttClient = new Mqtt(baseOptions());
+        await mqttClient.publish('subject');
+        await mqttClient.publish('subject');
+        await mqttClient.publish('subject');
+        assert.strictEqual(calls[0].client.listenerCount('error'), 1);
+        assert.strictEqual(calls[0].client.listenerCount('close'), 1);
+      },
+    );
+  }
+
+  // 13. concurrent in-flight publishes: both temporary listeners coexist,
+  //     both reject on the same error, and listeners are cleaned up after.
+  {
+    const calls = [];
+    await withStubbedConnect(
+      (uri, opts) => {
+        const client = createFakeClient();
+        client.publish = () => new Promise(() => {});
+        calls.push({ uri, opts, client });
+        return client;
+      },
+      async () => {
+        const mqttClient = new Mqtt(baseOptions());
+        const firstPublishPromise = mqttClient.publish('subject');
+        const secondPublishPromise = mqttClient.publish('subject');
+        assert.strictEqual(calls[0].client.listenerCount('close'), 3);
+
+        calls[0].client.trigger('error', new Error('connack timeout'));
+        await assert.rejects(firstPublishPromise, /connack timeout/);
+        await assert.rejects(secondPublishPromise, /connack timeout/);
+        assert.strictEqual(calls[0].client.listenerCount('error'), 1);
+        assert.strictEqual(calls[0].client.listenerCount('close'), 1);
+      },
+    );
   }
 
   console.log('mqtt-publish tests passed');

@@ -28,7 +28,7 @@
     "node": ">=20 <25"
   },
   "dependencies": {
-    "@line/bot-sdk": "^11.2.0",
+    "@line/bot-sdk": "^11.3.0",
     "@sendgrid/eventwebhook": "^8.0.0",
     "async-mqtt": "^2.6.3",
     "body-parser": "^2.3.0",

@@ -53,8 +53,8 @@ importers:
         specifier: ^4.4.3
         version: 4.4.3
       dotenv:
-        specifier: ^18.0.2
-        version: 18.0.2
+        specifier: ^18.0.4
+        version: 18.0.4
       ejs:
         specifier: ^6.0.1
         version: 6.0.1
@@ -671,8 +671,8 @@ packages:
   domutils@3.2.2:
     resolution: {integrity: sha512-6kZKyUajlDuqlHKVX1w7gyslj9MPIXzIFiz/rGu35uC1wMi+kMhQwGhl4lt9unC9Vb9INnY9Z3/ZA3+FhASLaw==}
 
-  dotenv@18.0.2:
-    resolution: {integrity: sha512-wl0U3CxC0iobaryqEKpFJxzyp4AxQFYAKj/WWszXZr87vVHLi2yJv2syax5Vxt+u02xqNgE277rsc3lOKg9sPg==}
+  dotenv@18.0.4:
+    resolution: {integrity: sha512-jGt9uI5BIxpVO15kvy+iEFqNAwxYClKWnkptLjSNPnFLC003Imd0ofr3aEVsbpHdSBdSsbcApNIlz4nbyGMwdA==}
     engines: {node: '>=12'}
     hasBin: true
 
@@ -1502,8 +1502,8 @@ packages:
   pg-connection-string@2.14.0:
     resolution: {integrity: sha512-XwWDGcLRGCXAR8F/AM5bG7Q+A3Wm2s6QeEjlOKZLlH3UYcguiqCWKyWXVag5TLTIjR7oOJUY8kcADaZgWPyLeg==}
 
-  pg-cursor@2.22.0:
-    resolution: {integrity: sha512-knzXLKqarTjOvb3qDSW0JiGsazmxwEKXrqHfWRte7XUsOYccQRafn3BLnQobWwInkzFJSyOej8y8cQRh2z3kGw==}
+  pg-cursor@2.22.1:
+    resolution: {integrity: sha512-X10ldv3wwBONQkOSwgWEbaEITMGLd92V2Zd+xsFPhDt3nhhU3hpAT08SERBChnIFmomczLax6lKXLJrHPPXfxA==}
     peerDependencies:
       pg: ^8
 
@@ -2652,7 +2652,7 @@ snapshots:
       domelementtype: 2.3.0
       domhandler: 5.0.3
 
-  dotenv@18.0.2: {}
+  dotenv@18.0.4: {}
 
   dunder-proto@1.0.1:
     dependencies:
@@ -3698,7 +3698,7 @@ snapshots:
 
   pg-connection-string@2.14.0: {}
 
-  pg-cursor@2.22.0(pg@8.23.0):
+  pg-cursor@2.22.1(pg@8.23.0):
     dependencies:
       pg: 8.23.0
 
@@ -3725,7 +3725,7 @@ snapshots:
   pg-query-stream@4.17.0(pg@8.23.0):
     dependencies:
       pg: 8.23.0
-      pg-cursor: 2.22.0(pg@8.23.0)
+      pg-cursor: 2.22.1(pg@8.23.0)
 
   pg-types@2.2.0:
     dependencies:

@@ -353,6 +353,40 @@ const run = async () => {
     assert.strictEqual(preparedLog.charsAfter, fillerBeforeLength + prefixLen + markerLen);
   }
 
+  // 不正ヘッダを含むファイルパートを同一チャンクで受けても未捕捉例外にならず 4xx で返る
+  {
+    const { app } = createWebhookTestApp();
+    const boundary = 'XBOUNDARY';
+    const body = Buffer.from([
+      `--${boundary}`,
+      'Content-Disposition: form-data; name="a"; filename="a.txt"',
+      '',
+      'xx',
+      `--${boundary}`,
+      'bad header line',
+      '',
+      'yy',
+      `--${boundary}--`,
+      '',
+    ].join('\r\n'));
+    const uncaught = [];
+    const onUncaught = (error) => uncaught.push(error);
+    process.on('uncaughtException', onUncaught);
+    let res;
+    try {
+      res = await request(app)
+        .post('/mail-webhook')
+        .set('Content-Type', `multipart/form-data; boundary=${boundary}`)
+        .send(body);
+      await new Promise((resolve) => setImmediate(resolve));
+    } finally {
+      process.removeListener('uncaughtException', onUncaught);
+    }
+
+    assert.deepStrictEqual(uncaught.map((error) => error.message), []);
+    assert.ok(res.status >= 400 && res.status < 500);
+  }
+
   console.log('mail webhook delivery tests passed');
 };
 

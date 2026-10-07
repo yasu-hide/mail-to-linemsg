@@ -68,7 +68,7 @@ class Database {
       return recipient;
     }
     if(extRecipientId) {
-      await this.database.none('INSERT INTO recipient_master(line_recipient_id, recipient_type, recipient_description, ext_recipient_id) VALUES ($1, $2, $3, $4) ON CONFLICT (line_recipient_id) DO NOTHING', [lineRecipientId, recipientType, recipientDescription, extRecipientId]);
+      await this.database.none('INSERT INTO recipient_master(line_recipient_id, recipient_type, recipient_description, ext_recipient_id) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING', [lineRecipientId, recipientType, recipientDescription, extRecipientId]);
     } else {
       await this.database.none('INSERT INTO recipient_master(line_recipient_id, recipient_type, recipient_description) VALUES ($1, $2, $3) ON CONFLICT (line_recipient_id) DO NOTHING', [lineRecipientId, recipientType, recipientDescription]);
     }

@@ -23,7 +23,7 @@ class Database {
     if (user) {
       return user;
     }
-    await this.database.none('INSERT INTO user_master(line_user_id) VALUES ($1)', [lineUserId])
+    await this.database.none('INSERT INTO user_master(line_user_id) VALUES ($1) ON CONFLICT (line_user_id) DO NOTHING', [lineUserId])
     debug('db:createUser:userInserted');
     user = await this.getUserByLineUserId(lineUserId);
     debug(user);
@@ -68,9 +68,9 @@ class Database {
       return recipient;
     }
     if(extRecipientId) {
-      await this.database.none('INSERT INTO recipient_master(line_recipient_id, recipient_type, recipient_description, ext_recipient_id) VALUES ($1, $2, $3, $4)', [lineRecipientId, recipientType, recipientDescription, extRecipientId]);
+      await this.database.none('INSERT INTO recipient_master(line_recipient_id, recipient_type, recipient_description, ext_recipient_id) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING', [lineRecipientId, recipientType, recipientDescription, extRecipientId]);
     } else {
-      await this.database.none('INSERT INTO recipient_master(line_recipient_id, recipient_type, recipient_description) VALUES ($1, $2, $3)', [lineRecipientId, recipientType, recipientDescription]);
+      await this.database.none('INSERT INTO recipient_master(line_recipient_id, recipient_type, recipient_description) VALUES ($1, $2, $3) ON CONFLICT (line_recipient_id) DO NOTHING', [lineRecipientId, recipientType, recipientDescription]);
     }
     debug('db:addRecipient:inserted');
     recipient = await this.getRecipientByLineRecipientId(lineRecipientId);
@@ -100,19 +100,9 @@ class Database {
 
   async addAddr(emailAddr, extUserId, extRecipientId, status=1) {
     debug('db:addAddr');
-    let addr;
-    addr = await this.getAddrByEmail(emailAddr);
-    debug(addr);
-    if (addr) {
-      return addr;
-    }
-    await this.database.none('INSERT INTO addr_master(addr_mail,user_id,recipient_id,status) VALUES ($1, (SELECT user_id FROM user_master WHERE ext_user_id=$2), (SELECT recipient_id FROM recipient_master WHERE ext_recipient_id=$3), $4)', [emailAddr, extUserId, extRecipientId, status]);
-    debug('db:addAddr:inserted');
-    addr = await this.getAddrByEmail(emailAddr);
-    if (addr) {
-      return addr;
-    }
-    throw new Error(`SystemError: cannot create addr ${emailAddr}`);
+    const addr = await this.database.oneOrNone('INSERT INTO addr_master(addr_mail,user_id,recipient_id,status) VALUES ($1, (SELECT user_id FROM user_master WHERE ext_user_id=$2), (SELECT recipient_id FROM recipient_master WHERE ext_recipient_id=$3), $4) ON CONFLICT (addr_mail) DO NOTHING RETURNING *', [emailAddr, extUserId, extRecipientId, status]);
+    debug('db:addAddr:inserted', addr);
+    return addr;
   }
 
   async getAddrByEmail(emailAddr) {

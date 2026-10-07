@@ -289,7 +289,7 @@ const run = async () => {
             ? null
             : { ext_addr_id: 'ext-addr-id', addr_mail: 'inbox' };
         },
-        addAddr: async (...args) => { addAddrArgs = args; },
+        addAddr: async (...args) => { addAddrArgs = args; return { ext_addr_id: 'ext-addr-id', addr_mail: 'inbox' }; },
       },
       helpers: {
         getAvailableRecipient: async () => ([{ ext_recipient_id: 'r1' }]),
@@ -314,7 +314,7 @@ const run = async () => {
           getByEmailCalls += 1;
           return getByEmailCalls === 1 ? null : { ext_addr_id: 'ext-addr-id', addr_mail: 'inbox' };
         },
-        addAddr: async (...args) => { addAddrArgs = args; },
+        addAddr: async (...args) => { addAddrArgs = args; return { ext_addr_id: 'ext-addr-id', addr_mail: 'inbox' }; },
       },
       helpers: {
         getAvailableRecipient: async () => ([{ ext_recipient_id: 'r1' }]),
@@ -325,6 +325,29 @@ const run = async () => {
       .send({ formInputEmail: 'inbox', formInputRecipient: 'r1' });
     assert.strictEqual(res.status, 200);
     assert.strictEqual(addAddrArgs[0], 'inbox');
+  }
+
+  {
+    // 400: 事前確認の後に別ユーザーが同名を作成（addAddr が null）。他ユーザーの行を返さない
+    let getByEmailCalls = 0;
+    const { app } = createTestApp({
+      db: {
+        getAddrByEmail: async () => {
+          getByEmailCalls += 1;
+          return getByEmailCalls === 1 ? null : { ext_addr_id: 'other-user-addr', addr_mail: 'inbox' };
+        },
+        addAddr: async () => null,
+      },
+      helpers: {
+        getAvailableRecipient: async () => ([{ ext_recipient_id: 'r1' }]),
+      },
+    });
+    const { agent, csrfToken } = await authorizedAgent(app);
+    const res = await agent.post('/api/addr').set('X-CSRF-Token', csrfToken)
+      .send({ formInputEmail: 'inbox@example.com', formInputRecipient: 'r1' });
+    assert.strictEqual(res.status, 400);
+    assert.strictEqual(res.body.error.code, 'EMAIL_ALREADY_EXISTS');
+    assert.ok(!JSON.stringify(res.body).includes('other-user-addr'));
   }
 
   {

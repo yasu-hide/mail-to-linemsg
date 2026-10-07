@@ -49,6 +49,7 @@ erDiagram
 
 - PRIMARY KEY: user_id
 - UNIQUE: ext_user_id
+- UNIQUE: line_user_id
 
 ### 役割
 
@@ -74,6 +75,7 @@ erDiagram
 
 - PRIMARY KEY: recipient_id
 - UNIQUE: ext_recipient_id
+- UNIQUE: line_recipient_id
 
 ### 役割
 

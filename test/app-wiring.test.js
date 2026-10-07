@@ -178,6 +178,31 @@ const run = async () => {
     assert.deepStrictEqual(groupProfileCalls, [['line-r-group', 'line-user-id']]);
   }
 
+  // ---- createHelpers().getAvailableRecipient: 一部グループの取得失敗は除外して継続 ----
+  {
+    const recipientAll = [
+      { ext_recipient_id: 'ext-user-id', recipient_type: 0, line_recipient_id: 'line-r-user' },
+      { recipient_type: 1, line_recipient_id: 'line-r-group-ng' },
+      { recipient_type: 1, line_recipient_id: 'line-r-group-ok' },
+    ];
+    const helpers = createHelpers({
+      db: {
+        getUserByExtUserId: async () => ({ line_user_id: 'line-user-id' }),
+        getRecipientAll: async () => recipientAll,
+      },
+      msgbot: {
+        getGroupMemberProfile: async (lineRecipientId) => {
+          if (lineRecipientId === 'line-r-group-ng') {
+            throw new Error('not a member');
+          }
+          return {};
+        },
+      },
+    });
+    const result = await helpers.getAvailableRecipient('ext-user-id');
+    assert.deepStrictEqual(result, [recipientAll[0], recipientAll[2]]);
+  }
+
   // ---- createApp: 本番環境限定の分岐 ----
   {
     // trust proxy を設定し、SESSION_STORE 未設定なら警告ログを出す

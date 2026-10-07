@@ -53,9 +53,10 @@ const createHelpers = ({
     const recipientGroup = await Promise.all(
       recipientAll.filter(rcpt => rcpt.line_recipient_id != '' && rcpt.recipient_type === 1)
         .map(rcpt => msgbot.getGroupMemberProfile(rcpt.line_recipient_id, user.line_user_id)
-          .then(() => { return Promise.resolve(rcpt) }))
+          .then(() => { return Promise.resolve(rcpt) })
+          .catch(() => null))
     );
-    return [ ...recipientUser, ...recipientGroup ];
+    return [ ...recipientUser, ...recipientGroup.filter(Boolean) ];
   };
 
   return {

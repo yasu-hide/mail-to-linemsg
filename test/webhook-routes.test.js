@@ -172,6 +172,63 @@ const run = async () => {
     assert.deepStrictEqual(addRecipientArgs, ['G1', 1, 'テストグループ']);
   }
 
+  // 8. memberLeft: 脱退メンバーごとに disableAddrsByLineUserAndGroup が呼ばれる
+  {
+    const disableCalls = [];
+    const { app } = createTestApp({
+      events: [{
+        type: 'memberLeft',
+        source: { type: 'group', groupId: 'G1' },
+        left: { members: [{ type: 'user', userId: 'U1' }, { type: 'user', userId: 'U2' }] },
+      }],
+      db: {
+        disableAddrsByLineUserAndGroup: async (...args) => { disableCalls.push(args); },
+      },
+    });
+    const res = await request(app).post('/msg-webhook').send({});
+
+    assert.strictEqual(res.status, 200);
+    assert.deepStrictEqual(disableCalls, [['U1', 'G1'], ['U2', 'G1']]);
+  }
+
+  // 9. memberJoined: 参加メンバーごとに enableAddrsByLineUserAndGroup が呼ばれる
+  {
+    const enableCalls = [];
+    const { app } = createTestApp({
+      events: [{
+        type: 'memberJoined',
+        source: { type: 'group', groupId: 'G1' },
+        joined: { members: [{ type: 'user', userId: 'U1' }] },
+      }],
+      db: {
+        enableAddrsByLineUserAndGroup: async (...args) => { enableCalls.push(args); },
+      },
+    });
+    const res = await request(app).post('/msg-webhook').send({});
+
+    assert.strictEqual(res.status, 200);
+    assert.deepStrictEqual(enableCalls, [['U1', 'G1']]);
+  }
+
+  // 10. memberLeft/memberJoined でも source.type が group でなければ DB 未呼び出し
+  {
+    let calls = 0;
+    const { app } = createTestApp({
+      events: [{
+        type: 'memberLeft',
+        source: { type: 'room', roomId: 'R1' },
+        left: { members: [{ type: 'user', userId: 'U1' }] },
+      }],
+      db: {
+        disableAddrsByLineUserAndGroup: async () => { calls += 1; },
+      },
+    });
+    const res = await request(app).post('/msg-webhook').send({});
+
+    assert.strictEqual(res.status, 200);
+    assert.strictEqual(calls, 0);
+  }
+
   console.log('webhook-routes tests passed');
 };
 

@@ -159,6 +159,18 @@ class Database {
     debug('db:disableAddr:disabled');
   }
 
+  async disableAddrsByLineUserAndGroup(lineUserId, lineGroupId) {
+    debug('db:disableAddrsByLineUserAndGroup');
+    await this.database.none('UPDATE addr_master SET status=0 WHERE status=1 AND user_id IN (SELECT user_id FROM user_master WHERE line_user_id = $1) AND recipient_id IN (SELECT recipient_id FROM recipient_master WHERE line_recipient_id = $2)', [lineUserId, lineGroupId]);
+    debug('db:disableAddrsByLineUserAndGroup:disabled');
+  }
+
+  async enableAddrsByLineUserAndGroup(lineUserId, lineGroupId) {
+    debug('db:enableAddrsByLineUserAndGroup');
+    await this.database.none('UPDATE addr_master SET status=1 WHERE status=0 AND user_id IN (SELECT user_id FROM user_master WHERE line_user_id = $1) AND recipient_id IN (SELECT recipient_id FROM recipient_master WHERE line_recipient_id = $2)', [lineUserId, lineGroupId]);
+    debug('db:enableAddrsByLineUserAndGroup:enabled');
+  }
+
   async getRegisteredAddrByExtUserId(extUserId) {
     debug('db:getRegisteredAddrByExtUserId');
     const res = await this.database.any('SELECT DISTINCT(adrm.*) FROM addr_master adrm, user_master usrm WHERE adrm.user_id = usrm.user_id AND usrm.ext_user_id = $1', extUserId);

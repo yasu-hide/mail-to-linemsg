@@ -43,6 +43,18 @@ const createWebhookRoutes = ({
         });
         await db.addRecipient(lineGroupId, 1, lineGroupSummary.groupName.substring(0, 63));
       }
+      if(event && event.type === 'memberLeft' && event.source.type === 'group') {
+        logger.logInfo('line.group_member_left.received', { requestId: req.requestId });
+        for (const member of event.left.members) {
+          await db.disableAddrsByLineUserAndGroup(member.userId, event.source.groupId);
+        }
+      }
+      if(event && event.type === 'memberJoined' && event.source.type === 'group') {
+        logger.logInfo('line.group_member_joined.received', { requestId: req.requestId });
+        for (const member of event.joined.members) {
+          await db.enableAddrsByLineUserAndGroup(member.userId, event.source.groupId);
+        }
+      }
       return res.sendStatus(200);
     } catch (e) {
       next(e);

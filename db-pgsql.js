@@ -100,19 +100,9 @@ class Database {
 
   async addAddr(emailAddr, extUserId, extRecipientId, status=1) {
     debug('db:addAddr');
-    let addr;
-    addr = await this.getAddrByEmail(emailAddr);
-    debug(addr);
-    if (addr) {
-      return addr;
-    }
-    await this.database.none('INSERT INTO addr_master(addr_mail,user_id,recipient_id,status) VALUES ($1, (SELECT user_id FROM user_master WHERE ext_user_id=$2), (SELECT recipient_id FROM recipient_master WHERE ext_recipient_id=$3), $4)', [emailAddr, extUserId, extRecipientId, status]);
-    debug('db:addAddr:inserted');
-    addr = await this.getAddrByEmail(emailAddr);
-    if (addr) {
-      return addr;
-    }
-    throw new Error(`SystemError: cannot create addr ${emailAddr}`);
+    const addr = await this.database.oneOrNone('INSERT INTO addr_master(addr_mail,user_id,recipient_id,status) VALUES ($1, (SELECT user_id FROM user_master WHERE ext_user_id=$2), (SELECT recipient_id FROM recipient_master WHERE ext_recipient_id=$3), $4) ON CONFLICT (addr_mail) DO NOTHING RETURNING *', [emailAddr, extUserId, extRecipientId, status]);
+    debug('db:addAddr:inserted', addr);
+    return addr;
   }
 
   async getAddrByEmail(emailAddr) {

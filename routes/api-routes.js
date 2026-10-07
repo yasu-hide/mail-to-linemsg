@@ -116,7 +116,10 @@ const createApiRoutes = ({
       if(!extRecipientId) {
         throw new AppError('RECIPIENT_UNAVAILABLE', 'Recipient ' + extRecipientId + ' is not available.', 400);
       }
-      await db.addAddr(emailAddr, extUserId, extRecipientId);
+      const createdAddr = await db.addAddr(emailAddr, extUserId, extRecipientId);
+      if(!createdAddr) {
+        throw new AppError('EMAIL_ALREADY_EXISTS', 'Email address is already exists.', 400);
+      }
       const addr = await db.getAddrByEmail(emailAddr);
       res.status(200).json({
         msg: 'Success',

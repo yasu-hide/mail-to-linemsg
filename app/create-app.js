@@ -53,9 +53,15 @@ const createHelpers = ({
     const recipientGroup = await Promise.all(
       recipientAll.filter(rcpt => rcpt.line_recipient_id != '' && rcpt.recipient_type === 1)
         .map(rcpt => msgbot.getGroupMemberProfile(rcpt.line_recipient_id, user.line_user_id)
-          .then(() => { return Promise.resolve(rcpt) }))
+          .then(() => { return Promise.resolve(rcpt) })
+          .catch(() => null))
     );
-    return [ ...recipientUser, ...recipientGroup ];
+    const maskOtherUserAddr = (rcpt) => (
+      rcpt.user_id != null && rcpt.user_id !== user.user_id
+        ? { ...rcpt, ext_addr_id: null, addr_mail: null }
+        : rcpt
+    );
+    return [ ...recipientUser, ...recipientGroup.filter(Boolean) ].map(maskOtherUserAddr);
   };
 
   return {

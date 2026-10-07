@@ -56,7 +56,12 @@ const createHelpers = ({
           .then(() => { return Promise.resolve(rcpt) })
           .catch(() => null))
     );
-    return [ ...recipientUser, ...recipientGroup.filter(Boolean) ];
+    const maskOtherUserAddr = (rcpt) => (
+      rcpt.user_id != null && rcpt.user_id !== user.user_id
+        ? { ...rcpt, ext_addr_id: null, addr_mail: null }
+        : rcpt
+    );
+    return [ ...recipientUser, ...recipientGroup.filter(Boolean) ].map(maskOtherUserAddr);
   };
 
   return {

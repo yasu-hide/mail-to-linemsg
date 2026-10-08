@@ -23,3 +23,5 @@ overrides:
   # どちらもtransitive依存でDependabotが自動更新不可と判定したため手動override。
   "browserslist": "4.28.9"
   "baseline-browser-mapping": "2.11.23"
+  # dependabot alert #92 (proxy-addr, GHSA-jqcg-44mw-7w3h) 対応。transitive依存のため手動override。
+  "proxy-addr": "2.0.8"

@@ -27,8 +27,8 @@ importers:
   .:
     dependencies:
       '@line/bot-sdk':
-        specifier: ^11.3.0
-        version: 11.3.0
+        specifier: ^11.4.0
+        version: 11.4.0
       '@sendgrid/eventwebhook':
         specifier: ^8.0.0
         version: 8.0.0
@@ -282,8 +282,8 @@ packages:
   '@keyv/serialize@1.1.1':
     resolution: {integrity: sha512-dXn3FZhPv0US+7dtJsIi2R+c7qWYiReoEh5zUntWCf4oSpMNib8FDhSoed6m3QyZdx5hK7iLFkYk3rNxwt8vTA==}
 
-  '@line/bot-sdk@11.3.0':
-    resolution: {integrity: sha512-AHCtmdgcVDElRLlrR8jxSracF4beWholl3Ywnl6TrPgEiSYH81fSovgWVO/LbyN0tlGidCzJMAsOLXNddF5FGg==}
+  '@line/bot-sdk@11.4.0':
+    resolution: {integrity: sha512-VPPNiCxhJnjjB3zb7q14toar6WnPdeBU9019uIq0ATozkc2LTDozx2Xrqw21uc5wgFz7g/E1MM/vcPI5VlsZPQ==}
     engines: {node: '>=22'}
 
   '@noble/hashes@1.8.0':
@@ -320,8 +320,8 @@ packages:
   '@types/json5@0.0.29':
     resolution: {integrity: sha512-dRLjCWHYg4oaA77cxO64oO+7JwCwnIzkZPdrrC71jQmQtlhM556pwKo5bUzqvZndkVbeFLIIi+9TC40JNF5hNQ==}
 
-  '@types/node@24.19.1':
-    resolution: {integrity: sha512-aS3/DG0oM05K0RIXXP+hKjinGG5IgSSVGzswZxW3O0sS3pH4/fycXundUC9XsszgKCk4gHXylTEK6hyFxVxnoQ==}
+  '@types/node@24.19.2':
+    resolution: {integrity: sha512-93d49wCWJkCyN87MxLpNN6KXPCwFw7bVUg79mGUV1OS40JGWwVCr8n61DXCSqz7CV6/VfPkb7xec7uP2M+QHWQ==}
 
   '@types/node@26.6.5':
     resolution: {integrity: sha512-uMzsv9stDdofIZBx4UGh4Z9ZgXnGC9seRDscilBcTHAeOFk67MZg/k9bWVfO+bk4qZmG+l52hRnLwUiH2LnJTg==}
@@ -2216,9 +2216,9 @@ snapshots:
 
   '@keyv/serialize@1.1.1': {}
 
-  '@line/bot-sdk@11.3.0':
+  '@line/bot-sdk@11.4.0':
     dependencies:
-      '@types/node': 24.19.1
+      '@types/node': 24.19.2
 
   '@noble/hashes@1.8.0': {}
 
@@ -2248,7 +2248,7 @@ snapshots:
 
   '@types/json5@0.0.29': {}
 
-  '@types/node@24.19.1':
+  '@types/node@24.19.2':
     dependencies:
       undici-types: 7.24.6
 

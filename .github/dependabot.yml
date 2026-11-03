@@ -1,4 +1,14 @@
 version: 2
+
+registries:
+  # Dockerfile の base image (dhi.io, Docker Hardened Images) は認証が必要。
+  # Dependabot シークレット (Actions シークレットとは別) DHI_USERNAME / DHI_TOKEN を登録すること。
+  dhi:
+    type: docker-registry
+    url: dhi.io
+    username: ${{secrets.DHI_USERNAME}}
+    password: ${{secrets.DHI_TOKEN}}
+
 updates:
   - package-ecosystem: "npm"
     directory: "/"
@@ -14,6 +24,8 @@ updates:
 
   - package-ecosystem: "docker"
     directory: "/"
+    registries:
+      - dhi
     schedule:
       interval: "weekly"
     cooldown:

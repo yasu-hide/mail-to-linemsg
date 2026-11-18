@@ -87,8 +87,8 @@ importers:
         specifier: ^2.5.0
         version: 2.5.0
       pg-promise:
-        specifier: ^12.7.1
-        version: 12.7.1(pg-query-stream@4.17.0(pg@8.23.0))
+        specifier: ^12.8.0
+        version: 12.8.0(pg-query-stream@4.17.1(pg@8.23.1))
       querystring:
         specifier: ^0.2.1
         version: 0.2.1
@@ -1497,11 +1497,11 @@ packages:
   peberminta@0.10.0:
     resolution: {integrity: sha512-80B2AsU+I4Qdb0ZAPSfe9UwvGzwkM37IKIFEvdS3D/3Ndgv2bsuJ0bfG1+iEYO+l7Gfd4EUJmuRyq7efLgRMzQ==}
 
-  pg-cloudflare@1.4.0:
-    resolution: {integrity: sha512-Vo7z/6rrQYxpNRylp4Tlob2elzbh+N/MOQbxFVWCxS7oEx6jF53GTJFxK2WWpKuBRkmiin4Mt+xofFDjx09R0A==}
+  pg-cloudflare@1.4.1:
+    resolution: {integrity: sha512-6PQbsFWZcp9EmJEwy5cGQ2La+AMWpP46lgbb8X+U/XsHIUweYDNCpeuKck5RxL2MdVFi7krbbEi5nX4Zh7JhrQ==}
 
-  pg-connection-string@2.14.0:
-    resolution: {integrity: sha512-XwWDGcLRGCXAR8F/AM5bG7Q+A3Wm2s6QeEjlOKZLlH3UYcguiqCWKyWXVag5TLTIjR7oOJUY8kcADaZgWPyLeg==}
+  pg-connection-string@2.14.1:
+    resolution: {integrity: sha512-qR3kGNPBLpCNtz0evbKA0Y/MRFXwSSdT+pTJvYp/bXTcReZbvX1kzF0IyTc1QnxqF7AZbOeBhNL8R5mYQZV/MA==}
 
   pg-cursor@2.22.1:
     resolution: {integrity: sha512-X10ldv3wwBONQkOSwgWEbaEITMGLd92V2Zd+xsFPhDt3nhhU3hpAT08SERBChnIFmomczLax6lKXLJrHPPXfxA==}
@@ -1521,17 +1521,17 @@ packages:
     peerDependencies:
       pg: '>=8.0'
 
-  pg-promise@12.7.1:
-    resolution: {integrity: sha512-tsemfuBRsHMGaFZKMpkmCAA9iLeHXuuTq+0DucJwJyftyXk7crlMFXq7SY0AOVelIrdSL8qwdl5omfj/R8JN6A==}
+  pg-promise@12.8.0:
+    resolution: {integrity: sha512-sPp+K6RZc0TufQYu9mIV7WkZ5Z+8a1rUF9f83K6sQqdFMzkxerGxWTVPrQBWIeiDz2G/bB8/oaEEaEA4mtBiXg==}
     engines: {node: '>=16.0'}
     peerDependencies:
-      pg-query-stream: 4.17.0
+      pg-query-stream: 4.17.1
 
-  pg-protocol@1.16.0:
-    resolution: {integrity: sha512-sILXutLVjCLjcDuOmvhX5e2Z4cS5qG/6Bu3VkpFwdf/633ElGLpEh9bgmuI5I4sqKqkifQiGyiCcx1HdtrK7tg==}
+  pg-protocol@1.16.1:
+    resolution: {integrity: sha512-p9VOFMiHB/ZbJATetbg+99PxssTVSQRnyuPSQ67mN1+1KBOjZaZ83ZQzltnxPhJwSsC3nwVjJ10DVJlerbFzLg==}
 
-  pg-query-stream@4.17.0:
-    resolution: {integrity: sha512-69bug2CH/AJi1BN8r08eZ8tAGdbZZVp9kB0FG9OC2VkJPHIyj7d3Nk9V8tmporO60wqeWvhn7qtQ5oNimwlFug==}
+  pg-query-stream@4.17.1:
+    resolution: {integrity: sha512-XZ6wenflIOUiT1Qss+cNNXfrm1XGQfZt/GZKagUq7ia/sIfDHiYmPUK0EehPoFu/EakvyutK/z9eah+QZhPoQQ==}
     peerDependencies:
       pg: ^8
 
@@ -1539,8 +1539,8 @@ packages:
     resolution: {integrity: sha512-qTAAlrEsl8s4OiEQY69wDvcMIdQN6wdz5ojQiOy6YRMuynxenON0O5oCpJI6lshc6scgAY8qvJ2On/p+CXY0GA==}
     engines: {node: '>=4'}
 
-  pg@8.23.0:
-    resolution: {integrity: sha512-Ip2EQCngowJLGOfCwkFhPXU7/ljlhn6Rxlmy4XYfL2Y+vyRM59+8uR2xqRWKdYmbXmxCFOAmKxBuSUCdF34qLg==}
+  pg@8.23.1:
+    resolution: {integrity: sha512-aL96AHANtWjPLDOLqnhx+ngp9+UK7ETEU8VJrDCGvsSSi/mGLcWYsS6Herg7lmaBJe4uwrfqsa7gTEFaSizDoQ==}
     engines: {node: '>= 16.0.0'}
     peerDependencies:
       pg-native: '>=3.0.1'
@@ -3702,39 +3702,39 @@ snapshots:
 
   peberminta@0.10.0: {}
 
-  pg-cloudflare@1.4.0:
+  pg-cloudflare@1.4.1:
     optional: true
 
-  pg-connection-string@2.14.0: {}
+  pg-connection-string@2.14.1: {}
 
-  pg-cursor@2.22.1(pg@8.23.0):
+  pg-cursor@2.22.1(pg@8.23.1):
     dependencies:
-      pg: 8.23.0
+      pg: 8.23.1
 
   pg-int8@1.0.1: {}
 
   pg-minify@1.8.0: {}
 
-  pg-pool@3.14.0(pg@8.23.0):
+  pg-pool@3.14.0(pg@8.23.1):
     dependencies:
-      pg: 8.23.0
+      pg: 8.23.1
 
-  pg-promise@12.7.1(pg-query-stream@4.17.0(pg@8.23.0)):
+  pg-promise@12.8.0(pg-query-stream@4.17.1(pg@8.23.1)):
     dependencies:
       assert-options: 0.8.3
-      pg: 8.23.0
+      pg: 8.23.1
       pg-minify: 1.8.0
-      pg-query-stream: 4.17.0(pg@8.23.0)
+      pg-query-stream: 4.17.1(pg@8.23.1)
       spex: 4.1.0
     transitivePeerDependencies:
       - pg-native
 
-  pg-protocol@1.16.0: {}
+  pg-protocol@1.16.1: {}
 
-  pg-query-stream@4.17.0(pg@8.23.0):
+  pg-query-stream@4.17.1(pg@8.23.1):
     dependencies:
-      pg: 8.23.0
-      pg-cursor: 2.22.1(pg@8.23.0)
+      pg: 8.23.1
+      pg-cursor: 2.22.1(pg@8.23.1)
 
   pg-types@2.2.0:
     dependencies:
@@ -3744,15 +3744,15 @@ snapshots:
       postgres-date: 1.0.7
       postgres-interval: 1.2.0
 
-  pg@8.23.0:
+  pg@8.23.1:
     dependencies:
-      pg-connection-string: 2.14.0
-      pg-pool: 3.14.0(pg@8.23.0)
-      pg-protocol: 1.16.0
+      pg-connection-string: 2.14.1
+      pg-pool: 3.14.0(pg@8.23.1)
+      pg-protocol: 1.16.1
       pg-types: 2.2.0
       pgpass: 1.0.5
     optionalDependencies:
-      pg-cloudflare: 1.4.0
+      pg-cloudflare: 1.4.1
 
   pgpass@1.0.5:
     dependencies:

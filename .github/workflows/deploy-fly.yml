@@ -100,6 +100,23 @@ jobs:
           sed -i "s|__FLY_PRIMARY_REGION__|${FLY_PRIMARY_REGION}|g" .fly.generated.toml
           sed -i "s|__LINE_LOGIN_CALLBACK_URL__|${LINE_LOGIN_CALLBACK_URL}|g" .fly.generated.toml
 
+      - name: Build and push image (OCI + zstd)
+        # Docker 29 の containerd image store は flyctl --local-only だと Docker 独自の
+        # zstd メディアタイプでレイヤーを push し、Fly が pull できず machine が起動しない。
+        # flyctl の --compression は Depot 専用でローカルビルドには効かないため、
+        # OCI メディアタイプ + zstd (Fly 公式手順) を明示して自前で push する。
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          FLY_APP: ${{ vars.FLY_APP }}
+        run: |
+          set -euo pipefail
+          flyctl auth docker
+          IMAGE="registry.fly.io/${FLY_APP}:gh-${GITHUB_SHA}"
+          docker buildx build . \
+            --provenance=false --sbom=false \
+            --output "type=image,name=${IMAGE},push=true,oci-mediatypes=true,compression=zstd,compression-level=3,force-compression=true"
+          echo "IMAGE=${IMAGE}" >> "$GITHUB_ENV"
+
       - name: Deploy
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
@@ -108,7 +125,7 @@ jobs:
         run: |
           set -euo pipefail
           flyctl deploy \
-            --local-only \
+            --image "$IMAGE" \
             --debug \
             --verbose \
             --config .fly.generated.toml \
